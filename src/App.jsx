@@ -892,10 +892,33 @@ function AddProduct({ onCancel, onCreate }) {
   );
 }
 
+function ordersToCSV(orders) {
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["Código", "Fecha", "Cliente", "Teléfono", "Método", "Estado", "Total", "Productos"];
+  const lines = orders.map((o) => [
+    o.id, o.date, o.buyer.name, o.buyer.phone,
+    o.method === "efectivo" ? "Efectivo" : "Transferencia",
+    o.status, o.total,
+    o.items.map((i) => `${i.name}${i.size !== "Única" ? " " + i.size : ""} (${i.color}) x${i.qty}`).join(" | "),
+  ].map(esc).join(";"));
+  return "\uFEFF" + [head.map(esc).join(";"), ...lines].join("\r\n");
+}
+
+function downloadOrders(orders) {
+  const blob = new Blob([ordersToCSV(orders)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function SellerOrders({ orders, onSetStatus }) {
   if (orders.length === 0) return <div className="av-empty" style={{ paddingTop: 70 }}>{I.bag({ width: 32, height: 32 })}<div>Aún no hay pedidos.</div><div style={{ fontSize: 12 }}>Haz una compra desde la vista <b>Comprador</b> y aparecerá aquí.</div></div>;
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 6 }}>
+      <button className="av-btn dark" style={{ flex: "none", padding: "11px 16px", marginBottom: 12 }} onClick={() => downloadOrders(orders)}>{I.up({ width: 16, height: 16 })} Descargar pedidos (Excel)</button>
       {orders.map((o) => { const sc = STATUS_COLOR[o.status] || STATUS_COLOR["Pago en revisión"]; return (
         <div key={o.dbId} className="av-orderc"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontFamily: "Space Grotesk", fontWeight: 700 }}>{o.id}</div><span className="av-status" style={{ background: sc.bg, color: sc.c }}>{o.status}</span></div><div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.date} · {o.buyer.name} · {o.buyer.phone}</div><div style={{ marginTop: 6 }}><span className="av-tag" style={{ background: o.method === "efectivo" ? "#E9F7EF" : "var(--accent-soft)", color: o.method === "efectivo" ? "#15803D" : "var(--accent)" }}>{o.method === "efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}</span></div><div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>{o.items.map((i) => <div key={i.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "var(--ink2)" }}>{i.name} {i.size !== "Única" ? "· " + i.size : ""} ({i.color}) ×{i.qty}</span><span style={{ fontWeight: 600 }}>{CLP(i.price * i.qty)}</span></div>)}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 10 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{o.method === "efectivo" ? "Total a cobrar" : "Comprobante"}</span><span className="av-price" style={{ fontSize: 15 }}>{CLP(o.total)}</span></div>{o.comprobante?.url && <a href={o.comprobante.url} target="_blank" rel="noreferrer"><img src={o.comprobante.url} alt="comprobante" style={{ width: "100%", borderRadius: 12, marginTop: 10, maxHeight: 180, objectFit: "cover" }} /></a>}<select className="av-select" value={o.status} onChange={(e) => onSetStatus(o.dbId, e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
       ); })}

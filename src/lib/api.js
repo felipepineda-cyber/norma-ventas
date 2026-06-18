@@ -66,22 +66,36 @@ export async function listProducts(storeId) {
 }
 export async function createProduct(storeId, product, variants) {
   const { data: prod, error } = await supabase.from("products").insert({
-    store_id: storeId, name: product.name, category: product.category, price: product.price,
-    description: product.description || "", images: product.images || [], active: true, offer_pct: 0,
+    store_id: storeId,
+    name: product.name,
+    category: product.category,
+    description: product.desc || product.description || "",
+    emoji: product.emoji,
+    images: product.images || [],
+    benefits: product.benefits || [],
+    normal_price: product.normalPrice ?? product.price,
+    offer_pct: product.offerPct || 0,
+    featured: !!product.featured,
+    top: !!product.top,
+    active: product.active !== false,
+    is_new: true,
+    sort_order: product.sort_order ?? 0,
   }).select().single();
   if (error) throw error;
-  const rows = variants.map((v) => ({ product_id: prod.id, color: v.color, size: v.size, stock: v.stock }));
-  const { error: ve } = await supabase.from("variants").insert(rows);
-  if (ve) throw ve;
+  if (variants && variants.length) {
+    const rows = variants.map((v) => ({ product_id: prod.id, color: v.color, hex: v.hex, size: v.size, stock: v.stock || 0 }));
+    const { error: ve } = await supabase.from("variants").insert(rows);
+    if (ve) throw ve;
+  }
   return prod;
 }
-export async function updateProduct(id, patch) {
-  const { data, error } = await supabase.from("products").update(patch).eq("id", id).select().single();
+export async function updateProduct(productId, patch) {
+  const { data, error } = await supabase.from("products").update(patch).eq("id", productId).select().single();
   if (error) throw error;
   return data;
 }
-export async function setOffer(id, pct) {
-  const { data, error } = await supabase.from("products").update({ offer_pct: pct }).eq("id", id).select().single();
+export async function setOffer(productId, pct) {
+  const { data, error } = await supabase.from("products").update({ offer_pct: pct }).eq("id", productId).select().single();
   if (error) throw error;
   return data;
 }
