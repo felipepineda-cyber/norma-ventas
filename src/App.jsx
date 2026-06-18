@@ -2,10 +2,10 @@
 // Login real + tienda + catálogo + comprador (checkout con comprobante) +
 // panel vendedor completo. Todo lee/escribe en Supabase vía src/lib/api.js.
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   signIn, signOut, getSession, onAuthChange,
-  getMyStore, getStorePublic, listProducts, createProduct, updateProduct, setOffer,
+  getMyStore, getStorePublic, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
   saveOrder, updateVariantStock, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -459,6 +459,14 @@ function Main({ onLogout }) {
     try { const row = await setOffer(id, pct); const m = mapProduct({ ...row, variants: products.find((x) => x.id === id)?.variants.map((v) => ({ ...v })) || [] }); setProducts((arr) => arr.map((x) => (x.id === id ? { ...x, offerPct: m.offerPct, price: m.price, was: m.was } : x))); }
     catch (e) { alert(e.message); }
   };
+  const editProductH = async (id, patch) => {
+    try { await updateProduct(id, patch); await reloadProducts(store.id); }
+    catch (e) { alert(e.message); }
+  };
+  const deleteProductH = async (id) => {
+    setProducts((arr) => arr.filter((p) => p.id !== id));
+    try { await deleteProduct(id); } catch (e) { alert(e.message); reloadProducts(store.id); }
+  };
   const saveOrderH = async (ordered) => { setProducts(ordered); try { await saveOrder(ordered); } catch (e) { alert(e.message); } };
   const setStockH = (variantId, productId, stock) => {
     const v = Math.max(0, stock);
@@ -503,7 +511,7 @@ function Main({ onLogout }) {
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
             : <Seller store={store} products={products} orders={orders}
                 onLogout={onLogout} onToggle={toggleProduct} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
-                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} />}
+                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} />}
         </div>
       </div>
     </div>
@@ -744,7 +752,7 @@ function Done({ store, order, onHome }) {
 }
 
 /* ============================ VENDEDOR ============================ */
-function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode }) {
+function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct }) {
   const [tab, setTab] = useState("productos");
   const handleLogout = async () => { await signOut(); onLogout(); };
   const tabs = [["vista", "Vista"], ["productos", "Productos"], ["stock", "Stock"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`], ["marca", "Marca"], ["tienda", "Tienda"]];
@@ -754,7 +762,7 @@ function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSav
       <div className="av-screen">
         <div className="av-tabbar">{tabs.map(([k, l]) => <div key={k} className={"av-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</div>)}</div>
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
-        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} />}
+        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
@@ -816,16 +824,86 @@ function SellerInventory({ products, onSetStock }) {
   );
 }
 
-function SellerProducts({ products, onToggle, onCreate }) {
+function SwipeRow({ onEdit, onDelete, children }) {
+  const W = 156;
+  const [dx, setDx] = useState(0);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const moved = useRef(false);
+  const down = (e) => { dragging.current = true; moved.current = false; startX.current = e.clientX - dx; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ } };
+  const move = (e) => { if (!dragging.current) return; let nx = e.clientX - startX.current; if (Math.abs(nx - dx) > 2) moved.current = true; if (nx > 0) nx = 0; if (nx < -W) nx = -W; setDx(nx); };
+  const up = () => { if (!dragging.current) return; dragging.current = false; setDx(dx < -W / 2 ? -W : 0); };
+  const close = () => setDx(0);
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: 14, marginBottom: 8, background: "var(--surface)" }}>
+      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: W, display: "flex" }}>
+        <button onClick={() => { close(); onEdit(); }} style={{ flex: 1, border: 0, background: "var(--accent)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "'Space Grotesk',sans-serif" }}>Editar</button>
+        <button onClick={() => { close(); onDelete(); }} style={{ flex: 1, border: 0, background: "var(--hot)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "'Space Grotesk',sans-serif" }}>Eliminar</button>
+      </div>
+      <div onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={() => { if (!moved.current && dx !== 0) close(); }}
+        style={{ transform: `translateX(${dx}px)`, transition: dragging.current ? "none" : "transform .22s ease", touchAction: "pan-y", position: "relative", zIndex: 1, background: "var(--surface)" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit }) {
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(null);
   if (adding) return <AddProduct onCancel={() => setAdding(false)} onCreate={onCreate} />;
+  if (editing) return <EditProduct product={editing} onCancel={() => setEditing(null)} onSave={onEdit} />;
   return (
     <div className="av-anim av-pad">
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
       {products.length === 0 && <div className="av-empty">Aún no tienes productos. Toca “Agregar producto”.</div>}
+      {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Desliza un producto hacia la izquierda para editarlo o eliminarlo.</p>}
       {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); return (
-        <div key={p.id} className="av-srow2"><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21 }}>{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
+        <SwipeRow key={p.id} onEdit={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
+          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21 }}>{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
+        </SwipeRow>
       ); })}
+    </div>
+  );
+}
+
+function EditProduct({ product, onCancel, onSave }) {
+  const [f, setF] = useState({
+    name: product.name || "",
+    category: product.category === "General" ? "" : (product.category || ""),
+    price: String(product.normalPrice ?? product.price ?? ""),
+    emoji: product.emoji || "👕",
+    benefits: (product.benefits || []).join("\n"),
+    desc: product.desc || "",
+  });
+  const up = (k, v) => setF({ ...f, [k]: v });
+  const [saving, setSaving] = useState(false);
+  const valid = f.name.trim() && f.price && !saving;
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave(product.id, {
+        name: f.name.trim(),
+        category: f.category.trim() || "General",
+        emoji: f.emoji,
+        description: f.desc,
+        benefits: f.benefits.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3),
+        normal_price: Number(f.price),
+      });
+      onCancel();
+    } catch (e) { alert(e.message); setSaving(false); }
+  };
+  return (
+    <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
+      <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Editar producto</span></div>
+      <p className="av-hint" style={{ textAlign: "left", marginBottom: 10 }}>El stock por color y talla se ajusta en la pestaña <b>Stock</b>.</p>
+      <div className="av-field"><label>Ícono de respaldo</label><div className="av-emojirow">{EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (f.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
+      <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
+      <div className="av-field"><label>Categoría</label><input className="av-input" value={f.category} onChange={(e) => up("category", e.target.value)} placeholder="Ej: Poleras" /></div>
+      <div className="av-field"><label>Precio (CLP) *</label><input className="av-input" type="number" value={f.price} onChange={(e) => up("price", e.target.value)} placeholder="14990" /></div>
+      <div className="av-field"><label>Beneficios (uno por línea, máx. 3)</label><textarea className="av-input" rows={3} value={f.benefits} onChange={(e) => up("benefits", e.target.value)} style={{ resize: "none", fontFamily: "inherit" }} /></div>
+      <div className="av-field"><label>Descripción</label><textarea className="av-input" rows={3} value={f.desc} onChange={(e) => up("desc", e.target.value)} placeholder="Describe el producto…" style={{ resize: "none", fontFamily: "inherit" }} /></div>
+      <div className="av-bottombar"><button className="av-btn ghost" style={{ flex: "none", padding: "15px 18px" }} onClick={onCancel}>Cancelar</button><button className="av-btn primary" disabled={!valid} onClick={save}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>
     </div>
   );
 }
