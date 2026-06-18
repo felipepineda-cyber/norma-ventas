@@ -321,31 +321,37 @@ function StoreLogo({ store, size = 36, radius = 11, fontSize = 19 }) {
 
 /* ===================================================================== */
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [checking, setChecking] = useState(true);
-  // Página principal = tienda (comprador). El panel del vendedor vive en /panel, /admin o /?admin
+  // Página principal = tienda (comprador). El panel del vendedor también
+  // se puede abrir por URL (/panel, /admin, /?admin, /?panel) en el computador.
   const path = window.location.pathname.replace(/\/+$/, "");
   const sp = new URLSearchParams(window.location.search);
   const isAdmin = path === "/panel" || path.startsWith("/panel/") || path === "/admin" || path.startsWith("/admin/") || sp.has("admin") || sp.has("panel");
   const publicStoreId = sp.get("tienda");
+  if (isAdmin) return <SellerApp />;
+  return <StoreFront storeId={publicStoreId} />;
+}
+
+/* ---- Área de vendedores: login + panel (sesión propia) ---- */
+function SellerApp({ onExit }) {
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
   useEffect(() => {
-    if (!isAdmin) return; // la tienda pública no necesita sesión
     getSession().then((s) => { setSession(s); setChecking(false); });
     const unsub = onAuthChange((s) => setSession(s));
     return unsub;
-  }, [isAdmin]);
-  if (!isAdmin) return <StoreFront storeId={publicStoreId} />;
+  }, []);
   if (checking) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando…</div></div>;
-  if (!session) return <LoginScreen onDone={(s) => setSession(s)} />;
-  return <Main onLogout={() => setSession(null)} />;
+  if (!session) return <LoginScreen onDone={(s) => setSession(s)} onBack={onExit} />;
+  return <Main onLogout={() => { setSession(null); if (onExit) onExit(); }} />;
 }
 
-/* ---- Vitrina pública: solo el comprador, sin login ni cambio de modo ---- */
+/* ---- Vitrina pública: la tienda, con acceso secreto al panel ---- */
 function StoreFront({ storeId }) {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showSeller, setShowSeller] = useState(false);
   useEffect(() => {
     (async () => {
       try {
@@ -360,6 +366,7 @@ function StoreFront({ storeId }) {
   }, [storeId]);
   const createOrderH = async ({ buyer, cart, total, comprobanteFile, paymentMethod }) =>
     await createOrder(store.id, { buyer, cart, total, comprobanteFile, paymentMethod });
+  if (showSeller) return <SellerApp onExit={() => setShowSeller(false)} />;
   if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando tienda…</div></div>;
   if (error) return <div className="av-root"><style>{CSS}</style><div className="av-empty">{error}</div></div>;
   return (
@@ -367,14 +374,14 @@ function StoreFront({ storeId }) {
       <div className="av-stage">
         <div className="av-phone">
           <div className="av-notch" />
-          <Buyer store={store} products={products} onCreateOrder={createOrderH} />
+          <Buyer store={store} products={products} onCreateOrder={createOrderH} onSecretAdmin={() => setShowSeller(true)} />
         </div>
       </div>
     </div>
   );
 }
 
-function LoginScreen({ onDone }) {
+function LoginScreen({ onDone, onBack }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
@@ -388,6 +395,7 @@ function LoginScreen({ onDone }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-login">
+        {onBack && <button className="av-modeswitch" style={{ alignSelf: "flex-start" }} onClick={onBack}>← Volver a la tienda</button>}
         <div className="av-loginlogo" style={grad("#3B2BFF", "#7A4DFF")}>🛍️</div>
         <div style={{ textAlign: "center" }}><div className="av-h1">Panel del vendedor</div><p className="av-desc" style={{ marginTop: 4 }}>Ingresa con tu correo y contraseña de Supabase.</p></div>
         <div><label className="av-cat">Correo</label><input className="av-input" style={{ marginTop: 6 }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.cl" /></div>
@@ -503,7 +511,7 @@ function Main({ onLogout }) {
 }
 
 /* ============================ COMPRADOR ============================ */
-function Buyer({ store, products, onCreateOrder, onSwitchMode }) {
+function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) {
   const [tab, setTab] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [flow, setFlow] = useState(null);
@@ -543,6 +551,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode }) {
       <div className="av-top">
         <div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
         {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">🧑‍💼 Vendedor</button>}
+        {onSecretAdmin && <button onClick={onSecretAdmin} aria-hidden="true" tabIndex={-1} title="" style={{ position: "absolute", top: 0, right: 0, width: 52, height: 52, opacity: 0, background: "transparent", border: 0, padding: 0, margin: 0, zIndex: 50 }} />}
       </div>
       <div className="av-screen">
         <div className="av-pad">
