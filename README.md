@@ -40,3 +40,4 @@ Coloca en `public/` los archivos `icon-192.png`, `icon-512.png` y `og-image.png`
 ## Notas
 - App de una sola tienda (el comprador anónimo no enruta por slug todavía).
 - El descuento de stock al confirmar pedido ya es automático (trigger en el SQL).
+# norma-ventas
