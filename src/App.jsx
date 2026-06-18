@@ -323,17 +323,18 @@ function StoreLogo({ store, size = 36, radius = 11, fontSize = 19 }) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
-  // Enlace público de comprador: ...?comprar  (opcional: ...?comprar&tienda=<id>)
+  // Página principal = tienda (comprador). El panel del vendedor vive en /admin
+  const path = window.location.pathname.replace(/\/+$/, "");
+  const isAdmin = path === "/admin" || path.startsWith("/admin/");
   const sp = new URLSearchParams(window.location.search);
-  const publicBuyer = sp.has("comprar") || sp.get("modo") === "comprador";
   const publicStoreId = sp.get("tienda");
   useEffect(() => {
-    if (publicBuyer) return; // en modo comprador público no se necesita sesión
+    if (!isAdmin) return; // la tienda pública no necesita sesión
     getSession().then((s) => { setSession(s); setChecking(false); });
     const unsub = onAuthChange((s) => setSession(s));
     return unsub;
-  }, [publicBuyer]);
-  if (publicBuyer) return <StoreFront storeId={publicStoreId} />;
+  }, [isAdmin]);
+  if (!isAdmin) return <StoreFront storeId={publicStoreId} />;
   if (checking) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando…</div></div>;
   if (!session) return <LoginScreen onDone={(s) => setSession(s)} />;
   return <Main onLogout={() => setSession(null)} />;
