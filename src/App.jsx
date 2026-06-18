@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from "react";
 import {
   signIn, signOut, getSession, onAuthChange,
-  getMyStore, listProducts, createProduct, updateProduct, setOffer,
+  getMyStore, getStorePublic, listProducts, createProduct, updateProduct, setOffer,
   saveOrder, updateVariantStock, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -22,6 +22,13 @@ const CSS = `
 .av-hint{font-size:12px;color:var(--muted);max-width:430px;text-align:center;line-height:1.55;}
 .av-phone{width:100%;max-width:418px;background:var(--surface);border:8px solid #15151C;border-radius:42px;overflow:hidden;box-shadow:0 30px 70px -30px rgba(20,20,50,.5);display:flex;flex-direction:column;height:780px;position:relative;}
 .av-notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:118px;height:24px;background:#15151C;border-radius:0 0 16px 16px;z-index:60;}
+@media (max-width:480px){
+  .av-stage{padding:0;gap:0;}
+  .av-phone{max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;}
+  .av-notch{display:none;}
+  .av-top{padding-top:calc(env(safe-area-inset-top) + 16px);}
+  .av-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 10px);}
+}
 .av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--surface);}
 .av-screen::-webkit-scrollbar{width:0;}
 .av-pad{padding-bottom:96px;}
@@ -33,6 +40,8 @@ const CSS = `
 .av-sii{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ok);margin-top:2px;}
 .av-sii.no{color:var(--muted);}
 .av-iconbtn{position:relative;width:40px;height:40px;border-radius:13px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none;}
+.av-modeswitch{display:inline-flex;align-items:center;gap:5px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;border:1px solid var(--line);background:#fff;color:var(--ink2);padding:8px 13px;border-radius:999px;cursor:pointer;flex:none;transition:.16s;white-space:nowrap;}
+.av-modeswitch:hover{border-color:var(--accent);color:var(--accent);}
 .av-iconbtn .dot{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--hot);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-family:'Space Grotesk';border:2px solid #fff;}
 .av-promo{margin:14px 18px 4px;border-radius:20px;padding:20px;color:#fff;position:relative;overflow:hidden;}
 .av-promo .eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.85;}
@@ -314,14 +323,54 @@ function StoreLogo({ store, size = 36, radius = 11, fontSize = 19 }) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
+  // Enlace público de comprador: ...?comprar  (opcional: ...?comprar&tienda=<id>)
+  const sp = new URLSearchParams(window.location.search);
+  const publicBuyer = sp.has("comprar") || sp.get("modo") === "comprador";
+  const publicStoreId = sp.get("tienda");
   useEffect(() => {
+    if (publicBuyer) return; // en modo comprador público no se necesita sesión
     getSession().then((s) => { setSession(s); setChecking(false); });
     const unsub = onAuthChange((s) => setSession(s));
     return unsub;
-  }, []);
+  }, [publicBuyer]);
+  if (publicBuyer) return <StoreFront storeId={publicStoreId} />;
   if (checking) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando…</div></div>;
   if (!session) return <LoginScreen onDone={(s) => setSession(s)} />;
   return <Main onLogout={() => setSession(null)} />;
+}
+
+/* ---- Vitrina pública: solo el comprador, sin login ni cambio de modo ---- */
+function StoreFront({ storeId }) {
+  const [store, setStore] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await getStorePublic(storeId);
+        if (!s) { setError("Tienda no encontrada."); setLoading(false); return; }
+        setStore(mapStore(s));
+        const rows = await listProducts(s.id);
+        setProducts(rows.map(mapProduct));
+      } catch (e) { setError(e.message || "No se pudo cargar la tienda"); }
+      finally { setLoading(false); }
+    })();
+  }, [storeId]);
+  const createOrderH = async ({ buyer, cart, total, comprobanteFile, paymentMethod }) =>
+    await createOrder(store.id, { buyer, cart, total, comprobanteFile, paymentMethod });
+  if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando tienda…</div></div>;
+  if (error) return <div className="av-root"><style>{CSS}</style><div className="av-empty">{error}</div></div>;
+  return (
+    <div className="av-root"><style>{CSS}</style>
+      <div className="av-stage">
+        <div className="av-phone">
+          <div className="av-notch" />
+          <Buyer store={store} products={products} onCreateOrder={createOrderH} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function LoginScreen({ onDone }) {
@@ -423,8 +472,8 @@ function Main({ onLogout }) {
     const url = await uploadStoreLogo(store.id, file);
     await updateStoreH({ ...store, logoUrl: url });
   };
-  const createOrderH = async ({ buyer, cart, total, comprobanteFile }) => {
-    const order = await createOrder(store.id, { buyer, cart, total, comprobanteFile });
+  const createOrderH = async ({ buyer, cart, total, comprobanteFile, paymentMethod }) => {
+    const order = await createOrder(store.id, { buyer, cart, total, comprobanteFile, paymentMethod });
     reloadOrders(store.id);
     return order;
   };
@@ -439,18 +488,13 @@ function Main({ onLogout }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className="av-switch">
-          <button className={mode === "buyer" ? "on" : ""} onClick={() => setMode("buyer")}>🛍️ Comprador</button>
-          <button className={mode === "seller" ? "on" : ""} onClick={() => setMode("seller")}>🧑‍💼 Vendedor</button>
-        </div>
-        <p className="av-hint">Conectado a Supabase. Lo que hagas como <b>Vendedor</b> se guarda y aparece en <b>Comprador</b>. Los pedidos del comprador llegan a la pestaña Pedidos.</p>
         <div className="av-phone">
           <div className="av-notch" />
           {mode === "buyer"
-            ? <Buyer store={store} products={products} onCreateOrder={createOrderH} />
+            ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
             : <Seller store={store} products={products} orders={orders}
                 onLogout={onLogout} onToggle={toggleProduct} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
-                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} />}
+                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} />}
         </div>
       </div>
     </div>
@@ -458,7 +502,7 @@ function Main({ onLogout }) {
 }
 
 /* ============================ COMPRADOR ============================ */
-function Buyer({ store, products, onCreateOrder }) {
+function Buyer({ store, products, onCreateOrder, onSwitchMode }) {
   const [tab, setTab] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [flow, setFlow] = useState(null);
@@ -497,6 +541,7 @@ function Buyer({ store, products, onCreateOrder }) {
     <>
       <div className="av-top">
         <div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
+        {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">🧑‍💼 Vendedor</button>}
       </div>
       <div className="av-screen">
         <div className="av-pad">
@@ -617,7 +662,6 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         <div style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: stock === 0 ? "var(--muted)" : stock <= 3 ? "var(--hot)" : "var(--ok)" }}>{stock === 0 ? "Sin stock en esta combinación" : stock <= 3 ? `¡Solo quedan ${stock}!` : `${stock} disponibles`}</div>
         {product.benefits?.length > 0 && <ul className="av-benefits">{product.benefits.map((b, i) => <li key={i}>{I.check()}<span>{b}</span></li>)}</ul>}
         {product.desc && <p className="av-desc">{product.desc}</p>}
-        <div className="av-trust"><div className="av-trustcol">{I.shield({ width: 18, height: 18 })}<div>Pago verificado</div></div><div className="av-trustcol">{I.truck({ width: 18, height: 18 })}<div>Envío a todo Chile</div></div><div className="av-trustcol">{I.refresh({ width: 18, height: 18 })}<div>Cambios 10 días</div></div></div>
       </div>
       <div className="av-divider" />
       <div className="av-shead" style={{ paddingBottom: 6 }}><h3>Opiniones</h3></div>
@@ -690,13 +734,13 @@ function Done({ store, order, onHome }) {
 }
 
 /* ============================ VENDEDOR ============================ */
-function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo }) {
+function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode }) {
   const [tab, setTab] = useState("productos");
   const handleLogout = async () => { await signOut(); onLogout(); };
   const tabs = [["vista", "Vista"], ["productos", "Productos"], ["stock", "Stock"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`], ["marca", "Marca"], ["tienda", "Tienda"]];
   return (
     <>
-      <div className="av-top"><div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className="av-sii">Panel del vendedor</span></div></div><button className="av-iconbtn" onClick={handleLogout} title="Salir">{I.lock({ width: 18, height: 18 })}</button></div>
+      <div className="av-top"><div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className="av-sii">Panel del vendedor</span></div></div>{onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Ver la tienda como comprador">🛍️ Comprador</button>}<button className="av-iconbtn" onClick={handleLogout} title="Salir">{I.lock({ width: 18, height: 18 })}</button></div>
       <div className="av-screen">
         <div className="av-tabbar">{tabs.map(([k, l]) => <div key={k} className={"av-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</div>)}</div>
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
