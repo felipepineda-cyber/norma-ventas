@@ -323,10 +323,10 @@ function StoreLogo({ store, size = 36, radius = 11, fontSize = 19 }) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
-  // Página principal = tienda (comprador). El panel del vendedor vive en /admin
+  // Página principal = tienda (comprador). El panel del vendedor vive en /admin o /?admin
   const path = window.location.pathname.replace(/\/+$/, "");
-  const isAdmin = path === "/admin" || path.startsWith("/admin/");
   const sp = new URLSearchParams(window.location.search);
+  const isAdmin = path === "/admin" || path.startsWith("/admin/") || sp.has("admin");
   const publicStoreId = sp.get("tienda");
   useEffect(() => {
     if (!isAdmin) return; // la tienda pública no necesita sesión
