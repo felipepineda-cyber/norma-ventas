@@ -6,7 +6,7 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   signIn, signOut, getSession, onAuthChange,
   getMyStore, getStorePublic, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
-  saveOrder, updateVariantStock, uploadProductImages,
+  saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
 
@@ -413,9 +413,12 @@ function Main({ onLogout }) {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [stockLog, setStockLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const logTimers = useRef({});
 
+  const reloadStockLog = async (storeId) => { try { setStockLog(await listStockLog(storeId)); } catch { /* noop */ } };
   const reloadProducts = async (storeId) => {
     const rows = await listProducts(storeId);
     setProducts(rows.map(mapProduct));
@@ -444,6 +447,7 @@ function Main({ onLogout }) {
         setStore(mapStore(s));
         await reloadProducts(s.id);
         await reloadOrders(s.id);
+        await reloadStockLog(s.id);
       } catch (e) { setError(e.message || "Error cargando datos"); }
       finally { setLoading(false); }
     })();
@@ -470,8 +474,16 @@ function Main({ onLogout }) {
   const saveOrderH = async (ordered) => { setProducts(ordered); try { await saveOrder(ordered); } catch (e) { alert(e.message); } };
   const setStockH = (variantId, productId, stock) => {
     const v = Math.max(0, stock);
+    const prod = products.find((p) => p.id === productId);
+    const variant = prod?.variants.find((x) => x.id === variantId);
     setProducts((arr) => arr.map((p) => (p.id === productId ? { ...p, variants: p.variants.map((x) => (x.id === variantId ? { ...x, stock: v } : x)) } : p)));
     updateVariantStock(variantId, v).catch((e) => alert(e.message));
+    clearTimeout(logTimers.current[variantId]);
+    logTimers.current[variantId] = setTimeout(() => {
+      logStockChange(store.id, { productId, productName: prod?.name, color: variant?.color, size: variant?.size, newStock: v })
+        .then(() => reloadStockLog(store.id))
+        .catch(() => { /* noop */ });
+    }, 900);
   };
   const createProductH = async (data, variants, files) => {
     let images = [];
@@ -509,7 +521,7 @@ function Main({ onLogout }) {
           <div className="av-notch" />
           {mode === "buyer"
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
-            : <Seller store={store} products={products} orders={orders}
+            : <Seller store={store} products={products} orders={orders} stockLog={stockLog}
                 onLogout={onLogout} onToggle={toggleProduct} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
                 onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} />}
         </div>
@@ -752,7 +764,7 @@ function Done({ store, order, onHome }) {
 }
 
 /* ============================ VENDEDOR ============================ */
-function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct }) {
+function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct }) {
   const [tab, setTab] = useState("productos");
   const handleLogout = async () => { await signOut(); onLogout(); };
   const tabs = [["vista", "Vista"], ["productos", "Productos"], ["stock", "Stock"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`], ["marca", "Marca"], ["tienda", "Tienda"]];
@@ -764,7 +776,7 @@ function Seller({ store, products, orders, onLogout, onToggle, onSetOffer, onSav
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
         {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
-        {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} />}
+        {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
         {tab === "tienda" && <SellerStore store={store} onUpdateStore={onUpdateStore} />}
       </div>
@@ -992,12 +1004,36 @@ function downloadOrders(orders) {
   URL.revokeObjectURL(url);
 }
 
-function SellerOrders({ orders, onSetStatus }) {
-  if (orders.length === 0) return <div className="av-empty" style={{ paddingTop: 70 }}>{I.bag({ width: 32, height: 32 })}<div>Aún no hay pedidos.</div><div style={{ fontSize: 12 }}>Haz una compra desde la vista <b>Comprador</b> y aparecerá aquí.</div></div>;
+function stockLogToCSV(log) {
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["Fecha y hora", "Producto", "Color", "Talla", "Stock nuevo"];
+  const lines = (log || []).map((r) => [
+    new Date(r.created_at).toLocaleString("es-CL"),
+    r.product_name, r.color, r.size, r.new_stock,
+  ].map(esc).join(";"));
+  return "\uFEFF" + [head.map(esc).join(";"), ...lines].join("\r\n");
+}
+
+function downloadCSV(text, nombre) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function SellerOrders({ orders, onSetStatus, stockLog }) {
+  const hoy = new Date().toISOString().slice(0, 10);
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 6 }}>
-      <button className="av-btn dark" style={{ flex: "none", padding: "11px 16px", marginBottom: 12 }} onClick={() => downloadOrders(orders)}>{I.up({ width: 16, height: 16 })} Descargar pedidos (Excel)</button>
-      {orders.map((o) => { const sc = STATUS_COLOR[o.status] || STATUS_COLOR["Pago en revisión"]; return (
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <button className="av-btn dark" style={{ flex: "none", padding: "11px 14px" }} onClick={() => downloadCSV(ordersToCSV(orders), `pedidos-${hoy}.csv`)}>{I.up({ width: 16, height: 16 })} Pedidos (Excel)</button>
+        <button className="av-btn dark" style={{ flex: "none", padding: "11px 14px" }} onClick={() => downloadCSV(stockLogToCSV(stockLog), `historial-stock-${hoy}.csv`)}>{I.up({ width: 16, height: 16 })} Historial de stock</button>
+      </div>
+      {orders.length === 0
+        ? <div className="av-empty" style={{ paddingTop: 40 }}>{I.bag({ width: 32, height: 32 })}<div>Aún no hay pedidos.</div><div style={{ fontSize: 12 }}>Haz una compra desde la tienda y aparecerá aquí.</div></div>
+        : orders.map((o) => { const sc = STATUS_COLOR[o.status] || STATUS_COLOR["Pago en revisión"]; return (
         <div key={o.dbId} className="av-orderc"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontFamily: "Space Grotesk", fontWeight: 700 }}>{o.id}</div><span className="av-status" style={{ background: sc.bg, color: sc.c }}>{o.status}</span></div><div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.date} · {o.buyer.name} · {o.buyer.phone}</div><div style={{ marginTop: 6 }}><span className="av-tag" style={{ background: o.method === "efectivo" ? "#E9F7EF" : "var(--accent-soft)", color: o.method === "efectivo" ? "#15803D" : "var(--accent)" }}>{o.method === "efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}</span></div><div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>{o.items.map((i) => <div key={i.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "var(--ink2)" }}>{i.name} {i.size !== "Única" ? "· " + i.size : ""} ({i.color}) ×{i.qty}</span><span style={{ fontWeight: 600 }}>{CLP(i.price * i.qty)}</span></div>)}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 10 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{o.method === "efectivo" ? "Total a cobrar" : "Comprobante"}</span><span className="av-price" style={{ fontSize: 15 }}>{CLP(o.total)}</span></div>{o.comprobante?.url && <a href={o.comprobante.url} target="_blank" rel="noreferrer"><img src={o.comprobante.url} alt="comprobante" style={{ width: "100%", borderRadius: 12, marginTop: 10, maxHeight: 180, objectFit: "cover" }} /></a>}<select className="av-select" value={o.status} onChange={(e) => onSetStatus(o.dbId, e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
       ); })}
     </div>
