@@ -1,7 +1,7 @@
 {
-  "name": "GamerStock CL",
-  "short_name": "GamerStock",
-  "description": "Catálogo y ventas con pago por transferencia y cierre por WhatsApp.",
+  "name": "Tienda",
+  "short_name": "Tienda",
+  "description": "Catálogo y ventas con pago por transferencia o efectivo y cierre por WhatsApp.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#EFEFF3",
