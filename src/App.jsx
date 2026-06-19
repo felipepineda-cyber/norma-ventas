@@ -29,6 +29,17 @@ const CSS = `
   .av-top{padding-top:calc(env(safe-area-inset-top) + 16px);}
   .av-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 10px);}
 }
+/* ---- Estilo vidrio (iOS) ---- */
+.av-phone.av-glass{background:var(--shop-bg, #EFEFF3);}
+.av-phone.av-glass .av-screen{background:transparent;}
+.av-phone.av-glass .av-top{background:rgba(255,255,255,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.6);}
+.av-phone.av-glass .av-nav{background:rgba(255,255,255,.5);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border-top:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}
+.av-phone.av-glass .av-card{background:rgba(255,255,255,.6);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 10px 30px -18px rgba(20,20,50,.5);}
+.av-phone.av-glass .av-bottombar{background:rgba(255,255,255,.58);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-top:1px solid rgba(255,255,255,.5);}
+.av-phone.av-glass .av-sheet{background:rgba(255,255,255,.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 -10px 40px -10px rgba(20,20,50,.3);}
+.av-phone.av-glass .av-search{background:rgba(255,255,255,.5);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,.55);}
+.av-phone.av-glass .av-chip{background:rgba(255,255,255,.5);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
+.av-phone.av-glass .av-iconbtn{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
 .av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--shop-bg, var(--surface));}
 .av-screen::-webkit-scrollbar{width:0;}
 .av-pad{padding-bottom:96px;}
@@ -289,7 +300,7 @@ function mapStore(row) {
   return {
     id: row.id, name: row.name, emoji: emojiOf(row.emoji, "🛍️"), logoA: row.logo_a || "#3B2BFF", logoB: row.logo_b || "#7A4DFF",
     logoUrl: row.logo_url || null,
-    theme: { bg: "#FFFFFF", cardBorderColor: "#ECECF2", cardBorderWidth: 1, cardRadius: 18, cardShadow: true, ...(row.theme || {}) },
+    theme: { bg: "#FFFFFF", cardBorderColor: "#ECECF2", cardBorderWidth: 1, cardRadius: 18, cardShadow: true, glass: false, ...(row.theme || {}) },
     sii: !!row.sii, whatsapp: row.whatsapp || "",
     promo: { eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" },
     bank: row.bank || {},
@@ -389,7 +400,7 @@ function StoreFront({ storeId }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className="av-phone" style={shopVars(store)}>
+        <div className={"av-phone" + (store.theme?.glass ? " av-glass" : "")} style={shopVars(store)}>
           <div className="av-notch" />
           <Buyer store={store} products={products} onCreateOrder={createOrderH} onSecretAdmin={() => setShowSeller(true)} />
         </div>
@@ -534,7 +545,7 @@ function Main({ onLogout }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className="av-phone" style={mode === "buyer" ? shopVars(store) : undefined}>
+        <div className={"av-phone" + (mode === "buyer" && store.theme?.glass ? " av-glass" : "")} style={mode === "buyer" ? shopVars(store) : undefined}>
           <div className="av-notch" />
           {mode === "buyer"
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
@@ -1100,6 +1111,11 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
 
       <div style={{ height: 1, background: "var(--line)", margin: "6px 0 16px" }} />
       <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Apariencia de la tienda</div>
+
+      <div className="av-field">
+        <div className="av-themebox"><div className="av-themerow" style={{ borderBottom: 0 }}><span>Estilo vidrio (iOS) 🪟</span><button className={"av-toggle" + ((t.glass ?? false) ? " on" : "")} onClick={() => upT("glass", !(t.glass ?? false))}><span className="kn" /></button></div></div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Superficies translúcidas tipo vidrio esmerilado, con el color de fondo llenando toda la pantalla. Elige un color de fondo para que luzca.</p>
+      </div>
 
       <div className="av-field"><label>Color de fondo de la tienda</label>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
