@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
-  getMyStore, getStorePublic, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
+  getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -1167,6 +1167,46 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   );
 }
 
+function SellerNotify({ store }) {
+  const [phone, setPhone] = useState("");
+  const [apikey, setApikey] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try { const n = await getStoreNotify(store.id); setPhone(n.phone || ""); setApikey(n.apikey || ""); } catch { /* noop */ }
+      finally { setLoaded(true); }
+    })();
+  }, [store.id]);
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    try { await saveStoreNotify(store.id, { phone: phone.replace(/\D/g, ""), apikey: apikey.trim() }); setSaved(true); }
+    catch (e) { alert(e.message); }
+    finally { setSaving(false); }
+  };
+  return (
+    <>
+      <div className="av-shead" style={{ paddingBottom: 0 }}><h3 style={{ fontSize: 14 }}>Avisos por WhatsApp (chatbot)</h3></div>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Recibe un WhatsApp automático cada vez que entra un pedido. Necesitas activar CallMeBot (gratis) y pegar aquí tu número y tu apikey.</p>
+      <button className="av-btn ghost block" style={{ marginBottom: 12 }} onClick={() => setOpen(!open)}>{open ? "Ocultar instrucciones" : "📖 Ver cómo activar el chatbot"}</button>
+      {open && (
+        <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: 14, marginBottom: 14, fontSize: 13, color: "var(--ink2)", lineHeight: 1.6 }}>
+          <b>Paso 1.</b> En el teléfono donde quieres recibir los avisos, abre <b>callmebot.com/blog/free-api-whatsapp-messages</b>. Ahí aparece el número actual del bot (cambia seguido).<br />
+          <b>Paso 2.</b> Agrega ese número a tus contactos y, por WhatsApp, mándale: <i>I allow callmebot to send me messages</i><br />
+          <b>Paso 3.</b> El bot te responde con tu <b>APIKEY</b> (un número).<br />
+          <b>Paso 4.</b> Escribe abajo tu número (con código de país, sin “+”) y ese apikey, y guarda. ¡Listo!
+        </div>
+      )}
+      <div className="av-field"><label>Tu número de WhatsApp (sin + ni espacios)</label><input className="av-input" value={phone} onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "")); setSaved(false); }} placeholder="56912345678" /></div>
+      <div className="av-field"><label>Tu APIKEY de CallMeBot</label><input className="av-input" value={apikey} onChange={(e) => { setApikey(e.target.value); setSaved(false); }} placeholder="1234567" /></div>
+      <button className="av-btn primary block" disabled={!loaded || saving} onClick={save}>{saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar avisos"}</button>
+      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
+    </>
+  );
+}
+
 function SellerStore({ store, onUpdateStore }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
@@ -1175,6 +1215,8 @@ function SellerStore({ store, onUpdateStore }) {
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
       <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
+      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
+      <SellerNotify store={store} />
       <div className="av-shead" style={{ paddingBottom: 0 }}><h3 style={{ fontSize: 14 }}>Datos bancarios</h3></div>
       {[["banco", "Banco"], ["tipo", "Tipo de cuenta"], ["numero", "N° de cuenta"], ["rut", "RUT"], ["titular", "Titular"], ["correo", "Correo"]].map(([k, l]) => (
         <div key={k} className="av-field"><label>{l}</label><input className="av-input" value={b[k] || ""} onChange={(e) => upBank(k, e.target.value)} /></div>

@@ -84,6 +84,17 @@ export async function getStore(storeId) {
   return data;
 }
 
+// Credenciales del aviso por WhatsApp (chatbot) de la tienda (privadas)
+export async function getStoreNotify(storeId) {
+  const { data, error } = await supabase.from("store_notify").select("phone, apikey").eq("store_id", storeId).maybeSingle();
+  if (error) throw error;
+  return data || { phone: "", apikey: "" };
+}
+export async function saveStoreNotify(storeId, { phone, apikey }) {
+  const { error } = await supabase.from("store_notify").upsert({ store_id: storeId, phone, apikey }, { onConflict: "store_id" });
+  if (error) throw error;
+}
+
 // Para el enlace público de comprador (sin login): una tienda por id, o la primera si no se indica id
 export async function getStorePublic(storeId) {
   let q = supabase.from("stores").select("*");
