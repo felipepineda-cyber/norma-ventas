@@ -494,7 +494,7 @@ function Main({ onLogout }) {
   const updateStoreH = async (next) => {
     setStore(next);
     try {
-      await upsertStore({ name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
+      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
     } catch (e) { alert(e.message); }
   };
   const uploadLogoH = async (file) => {

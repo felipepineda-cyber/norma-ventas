@@ -40,17 +40,22 @@ export function onAuthChange(callback) {
 
 /* =============================== TIENDA ============================== */
 
-// Devuelve la tienda del vendedor logueado (o null si aún no la creó)
+// Devuelve la tienda que el vendedor logueado puede administrar:
+// su propia tienda (si es dueño) o la tienda donde es miembro.
 export async function getMyStore() {
   const session = await getSession();
   if (!session) return null;
-  const { data, error } = await supabase
-    .from("stores")
-    .select("*")
-    .eq("owner_id", session.user.id)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const uid = session.user.id;
+  // ¿es dueño de una tienda?
+  const own = await supabase.from("stores").select("*").eq("owner_id", uid).maybeSingle();
+  if (own.error) throw own.error;
+  if (own.data) return own.data;
+  // ¿es miembro de una tienda?
+  const mem = await supabase.from("store_members").select("store_id").eq("user_id", uid).maybeSingle();
+  if (mem.error || !mem.data) return null;
+  const st = await supabase.from("stores").select("*").eq("id", mem.data.store_id).maybeSingle();
+  if (st.error) throw st.error;
+  return st.data || null;
 }
 
 // Para la vista del comprador: trae una tienda por id (pública)
@@ -81,14 +86,20 @@ export async function uploadStoreLogo(storeId, file) {
   return data.publicUrl;
 }
 
-// Crea o actualiza la tienda del vendedor
+// Crea o actualiza la tienda. Si llega con id (caso normal de edición),
+// actualiza ESA tienda sin tocar el dueño (funciona para dueño y miembros).
 export async function upsertStore(store) {
   const session = await getSession();
   if (!session) throw new Error("No hay sesión activa");
-  const payload = { ...store, owner_id: session.user.id };
+  if (store.id) {
+    const { id, owner_id, ...patch } = store; // nunca cambiamos el dueño
+    const { data, error } = await supabase.from("stores").update(patch).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
   const { data, error } = await supabase
     .from("stores")
-    .upsert(payload, { onConflict: "owner_id" })
+    .upsert({ ...store, owner_id: session.user.id }, { onConflict: "owner_id" })
     .select()
     .single();
   if (error) throw error;
