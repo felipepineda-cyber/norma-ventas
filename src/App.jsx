@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import {
-  signIn, signOut, getSession, onAuthChange,
+  signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
   getMyStore, getStorePublic, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, getComprobanteUrl, upsertStore, uploadStoreLogo,
@@ -411,14 +411,30 @@ function StoreFront({ storeId }) {
 }
 
 function LoginScreen({ onDone, onBack }) {
+  const [signup, setSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [shop, setShop] = useState("");
   const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const submit = async () => {
-    setError(""); setLoading(true);
-    try { await signIn(email, pass); onDone(await getSession()); }
-    catch (e) { setError(e.message || "No se pudo iniciar sesión"); }
+    setError(""); setMsg(""); setLoading(true);
+    try {
+      if (signup) {
+        const data = await signUp(email, pass);
+        if (!data.session) {
+          setMsg("Tu cuenta se creó. Revisa tu correo para confirmarla y luego inicia sesión.");
+          setSignup(false);
+        } else {
+          await createMyStore(shop);
+          onDone(await getSession());
+        }
+      } else {
+        await signIn(email, pass);
+        onDone(await getSession());
+      }
+    } catch (e) { setError(e.message || "Ocurrió un error"); }
     finally { setLoading(false); }
   };
   return (
@@ -426,11 +442,14 @@ function LoginScreen({ onDone, onBack }) {
       <div className="av-login">
         {onBack && <button className="av-modeswitch" style={{ alignSelf: "flex-start" }} onClick={onBack}>← Volver a la tienda</button>}
         <div className="av-loginlogo" style={grad("#3B2BFF", "#7A4DFF")}>🛍️</div>
-        <div style={{ textAlign: "center" }}><div className="av-h1">Panel del vendedor</div><p className="av-desc" style={{ marginTop: 4 }}>Ingresa con tu correo y contraseña de Supabase.</p></div>
+        <div style={{ textAlign: "center" }}><div className="av-h1">{signup ? "Crear tu tienda" : "Panel del vendedor"}</div><p className="av-desc" style={{ marginTop: 4 }}>{signup ? "Regístrate y tendrás tu propia tienda, lista para cargar productos." : "Ingresa con tu correo y contraseña."}</p></div>
+        {signup && <div><label className="av-cat">Nombre de tu tienda</label><input className="av-input" style={{ marginTop: 6 }} value={shop} onChange={(e) => setShop(e.target.value)} placeholder="Ej: Mi Tienda" /></div>}
         <div><label className="av-cat">Correo</label><input className="av-input" style={{ marginTop: 6 }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.cl" /></div>
-        <div><label className="av-cat">Contraseña</label><input className="av-input" style={{ marginTop: 6 }} type="password" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} /></div>
+        <div><label className="av-cat">Contraseña</label><input className="av-input" style={{ marginTop: 6 }} type="password" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={signup ? "Mínimo 6 caracteres" : ""} /></div>
         {error && <div style={{ background: "var(--hot-soft)", color: "#C0291C", padding: "10px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
-        <button className="av-btn primary block" disabled={loading || !email || !pass} onClick={submit}>{loading ? "Ingresando…" : "Ingresar"}</button>
+        {msg && <div style={{ background: "var(--accent-soft)", color: "var(--accent)", padding: "10px 12px", borderRadius: 10, fontSize: 13 }}>{msg}</div>}
+        <button className="av-btn primary block" disabled={loading || !email || !pass} onClick={submit}>{loading ? (signup ? "Creando…" : "Ingresando…") : (signup ? "Crear cuenta y tienda" : "Ingresar")}</button>
+        <button className="av-btn ghost block" onClick={() => { setSignup(!signup); setError(""); setMsg(""); }}>{signup ? "Ya tengo cuenta · Iniciar sesión" : "Crear una tienda nueva"}</button>
       </div>
     </div>
   );

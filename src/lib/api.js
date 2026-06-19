@@ -20,7 +20,26 @@ export async function signIn(email, password) {
 export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
-  return data.user;
+  return data; // data.session es null si se exige confirmar el correo
+}
+
+// Crea una tienda nueva para el usuario logueado (registro de vendedor nuevo)
+export async function createMyStore(name) {
+  const session = await getSession();
+  if (!session) throw new Error("No hay sesión activa");
+  const existing = await supabase.from("stores").select("*").eq("owner_id", session.user.id).maybeSingle();
+  if (existing.data) return existing.data;
+  const { data, error } = await supabase.from("stores").insert({
+    owner_id: session.user.id,
+    name: name && name.trim() ? name.trim() : "Mi Tienda",
+    emoji: "🛍️",
+    sii: false,
+    whatsapp: "",
+    bank: {},
+    theme: {},
+  }).select().single();
+  if (error) throw error;
+  return data;
 }
 
 export async function signOut() {
