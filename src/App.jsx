@@ -29,7 +29,7 @@ const CSS = `
   .av-top{padding-top:calc(env(safe-area-inset-top) + 16px);}
   .av-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 10px);}
 }
-.av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--surface);}
+.av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--shop-bg, var(--surface));}
 .av-screen::-webkit-scrollbar{width:0;}
 .av-pad{padding-bottom:96px;}
 .av-top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:40px 18px 12px;display:flex;align-items:center;gap:10px;}
@@ -42,6 +42,10 @@ const CSS = `
 .av-iconbtn{position:relative;width:40px;height:40px;border-radius:13px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none;}
 .av-modeswitch{display:inline-flex;align-items:center;gap:5px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;border:1px solid var(--line);background:#fff;color:var(--ink2);padding:8px 13px;border-radius:999px;cursor:pointer;flex:none;transition:.16s;white-space:nowrap;}
 .av-modeswitch:hover{border-color:var(--accent);color:var(--accent);}
+.av-colorpick{width:42px;height:32px;border:1px solid var(--line);border-radius:9px;padding:2px;background:#fff;cursor:pointer;flex:none;}
+.av-themebox{border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.av-themerow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink2);font-weight:600;}
+.av-themerow input[type=range]{accent-color:var(--accent);}
 .av-iconbtn .dot{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--hot);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-family:'Space Grotesk';border:2px solid #fff;}
 .av-promo{margin:14px 18px 4px;border-radius:20px;padding:20px;color:#fff;position:relative;overflow:hidden;}
 .av-promo .eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.85;}
@@ -67,7 +71,7 @@ const CSS = `
 .av-input.search{padding-left:42px;}
 .av-input:focus{border-color:var(--accent);background:#fff;}
 .av-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 18px 14px;}
-.av-card{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;cursor:pointer;transition:.16s;display:flex;flex-direction:column;box-shadow:0 4px 14px -12px rgba(20,20,50,.3);}
+.av-card{border:var(--card-bw, 1px) solid var(--card-bc, var(--line));border-radius:var(--card-rad, 18px);overflow:hidden;background:#fff;cursor:pointer;transition:.16s;display:flex;flex-direction:column;box-shadow:var(--card-sh, 0 4px 14px -12px rgba(20,20,50,.3));}
 .av-card:active{transform:scale(.985);}
 .av-thumb{aspect-ratio:1;display:grid;place-items:center;font-size:48px;position:relative;background-size:cover;background-position:center;}
 .av-badges{position:absolute;top:9px;left:9px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;}
@@ -285,6 +289,7 @@ function mapStore(row) {
   return {
     id: row.id, name: row.name, emoji: emojiOf(row.emoji, "🛍️"), logoA: row.logo_a || "#3B2BFF", logoB: row.logo_b || "#7A4DFF",
     logoUrl: row.logo_url || null,
+    theme: { bg: "#FFFFFF", cardBorderColor: "#ECECF2", cardBorderWidth: 1, cardRadius: 18, cardShadow: true, ...(row.theme || {}) },
     sii: !!row.sii, whatsapp: row.whatsapp || "",
     promo: { eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" },
     bank: row.bank || {},
@@ -311,6 +316,18 @@ const I = {
   chev: (p) => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m9 18 6-6-6-6"/></svg>),
 };
 const Stars = ({ v, size = 13 }) => (<span style={{ display: "inline-flex", gap: 1, color: "var(--gold)" }}>{[1, 2, 3, 4, 5].map((n) => I.star(n <= Math.round(v))({ key: n, width: size, height: size }))}</span>);
+
+/* Variables CSS del tema configurable de la tienda (fondo y bordes de tarjetas) */
+function shopVars(store) {
+  const t = store.theme || {};
+  const v = {};
+  if (t.bg) { v["--shop-bg"] = t.bg; }
+  if (t.cardBorderColor) v["--card-bc"] = t.cardBorderColor;
+  if (t.cardBorderWidth != null) v["--card-bw"] = `${t.cardBorderWidth}px`;
+  if (t.cardRadius != null) v["--card-rad"] = `${t.cardRadius}px`;
+  if (t.cardShadow != null) v["--card-sh"] = t.cardShadow ? "0 4px 14px -12px rgba(20,20,50,.3)" : "none";
+  return v;
+}
 
 /* Logo de la tienda: imagen si existe, si no degradado + ícono */
 function StoreLogo({ store, size = 36, radius = 11, fontSize = 19 }) {
@@ -372,7 +389,7 @@ function StoreFront({ storeId }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className="av-phone">
+        <div className="av-phone" style={shopVars(store)}>
           <div className="av-notch" />
           <Buyer store={store} products={products} onCreateOrder={createOrderH} onSecretAdmin={() => setShowSeller(true)} />
         </div>
@@ -494,7 +511,7 @@ function Main({ onLogout }) {
   const updateStoreH = async (next) => {
     setStore(next);
     try {
-      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
+      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, theme: next.theme, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
     } catch (e) { alert(e.message); }
   };
   const uploadLogoH = async (file) => {
@@ -517,7 +534,7 @@ function Main({ onLogout }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className="av-phone">
+        <div className="av-phone" style={mode === "buyer" ? shopVars(store) : undefined}>
           <div className="av-notch" />
           {mode === "buyer"
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
@@ -1053,6 +1070,8 @@ function SellerOrders({ orders, onSetStatus, stockLog }) {
 function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   const [busy, setBusy] = useState(false);
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
+  const t = store.theme || {};
+  const upT = (k, v) => onUpdateStore({ ...store, theme: { ...t, [k]: v } });
   const LOGO_GRADS = [["#3B2BFF", "#7A4DFF"], ["#F0392B", "#FF7A59"], ["#15A34A", "#7AD67A"], ["#FFB400", "#FF7A00"], ["#1C1C22", "#43434F"], ["#0EA5E9", "#6366F1"]];
   const LOGO_EMOJIS = ["🛍️", "🎮", "📦", "👕", "🧢", "👟", "🎧", "💄", "🍰", "🌿"];
   const onLogo = async (e) => {
@@ -1078,6 +1097,27 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
         <div className="av-field"><label>Color del logo</label><div className="av-presets">{LOGO_GRADS.map(([a, b]) => <span key={a} className={"av-presetdot" + (store.logoA === a ? " " : "")} style={{ ...grad(a, b), boxShadow: store.logoA === a ? "0 0 0 2px var(--accent)" : undefined }} onClick={() => onUpdateStore({ ...store, logoA: a, logoB: b })} />)}</div></div>
         <div className="av-field"><label>Ícono del logo</label><div className="av-emojirow">{LOGO_EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (store.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
       </>)}
+
+      <div style={{ height: 1, background: "var(--line)", margin: "6px 0 16px" }} />
+      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Apariencia de la tienda</div>
+
+      <div className="av-field"><label>Color de fondo de la tienda</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <input type="color" className="av-colorpick" value={t.bg || "#FFFFFF"} onChange={(e) => upT("bg", e.target.value)} />
+          <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{(t.bg || "#FFFFFF").toUpperCase()}</span>
+          <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("bg", "#FFFFFF")}>Restablecer</button>
+        </div>
+      </div>
+
+      <div className="av-field"><label>Borde de las tarjetas de producto</label>
+        <div className="av-themebox">
+          <div className="av-themerow"><span>Color del borde</span><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{(t.cardBorderColor || "#ECECF2").toUpperCase()}</span><input type="color" className="av-colorpick" value={t.cardBorderColor || "#ECECF2"} onChange={(e) => upT("cardBorderColor", e.target.value)} /></div></div>
+          <div className="av-themerow"><span>Grosor del borde</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="6" step="1" value={t.cardBorderWidth ?? 1} onChange={(e) => upT("cardBorderWidth", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardBorderWidth ?? 1}px</span></div></div>
+          <div className="av-themerow"><span>Redondeo de esquinas</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="32" step="1" value={t.cardRadius ?? 18} onChange={(e) => upT("cardRadius", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardRadius ?? 18}px</span></div></div>
+          <div className="av-themerow" style={{ borderBottom: 0 }}><span>Sombra</span><button className={"av-toggle" + ((t.cardShadow ?? true) ? " on" : "")} onClick={() => upT("cardShadow", !(t.cardShadow ?? true))}><span className="kn" /></button></div>
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Estos estilos se aplican a todas las tarjetas de la tienda. Cambia a la vista <b>Comprador</b> para verlos.</p>
+      </div>
     </div>
   );
 }
