@@ -30,7 +30,7 @@ const CSS = `
   .av-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 10px);}
 }
 /* ---- Estilo vidrio (iOS) ---- */
-.av-phone.av-glass{background:var(--shop-bg, #EFEFF3);}
+.av-phone.av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#23232E;--muted:#3C3C48;}
 .av-phone.av-glass .av-screen{background:transparent;}
 .av-phone.av-glass .av-top{background:rgba(255,255,255,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.6);}
 .av-phone.av-glass .av-nav{background:rgba(255,255,255,.5);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border-top:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}
@@ -337,6 +337,7 @@ function shopVars(store) {
   if (t.cardBorderWidth != null) v["--card-bw"] = `${t.cardBorderWidth}px`;
   if (t.cardRadius != null) v["--card-rad"] = `${t.cardRadius}px`;
   if (t.cardShadow != null) v["--card-sh"] = t.cardShadow ? "0 4px 14px -12px rgba(20,20,50,.3)" : "none";
+  if (t.ink) { v["--ink"] = t.ink; v["--ink2"] = t.ink; v["--muted"] = `color-mix(in srgb, ${t.ink} 55%, white)`; }
   return v;
 }
 
@@ -1123,6 +1124,15 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
           <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{(t.bg || "#FFFFFF").toUpperCase()}</span>
           <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("bg", "#FFFFFF")}>Restablecer</button>
         </div>
+      </div>
+
+      <div className="av-field"><label>Color de letra</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <input type="color" className="av-colorpick" value={t.ink || "#000000"} onChange={(e) => upT("ink", e.target.value)} />
+          <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{t.ink ? t.ink.toUpperCase() : "Automático"}</span>
+          <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("ink", null)}>Por defecto</button>
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Recomendado: <b>negro</b> (#000000) para máxima legibilidad, sobre todo con el estilo vidrio. “Por defecto” vuelve al gris original.</p>
       </div>
 
       <div className="av-field"><label>Borde de las tarjetas de producto</label>
