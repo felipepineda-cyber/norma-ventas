@@ -436,17 +436,75 @@ export default function App() {
 }
 
 /* ---- Área de vendedores: login + panel (sesión propia) ---- */
+/* ---- Seguridad biométrica (WebAuthn: Face ID / Touch ID / huella) ---- */
+const BIO_KEY = "nv_bio_cred";
+function bioSupported() { return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create); }
+async function bioPlatformAvailable() {
+  try { return bioSupported() && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch { return false; }
+}
+function bioEnabled() { return !!localStorage.getItem(BIO_KEY); }
+function bioDisable() { localStorage.removeItem(BIO_KEY); }
+function _rand(n = 32) { const a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+function _b64u(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function _unb64u(s) { return Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)); }
+async function bioRegister(name = "vendedor") {
+  if (!bioSupported()) throw new Error("Este dispositivo o navegador no soporta biometría.");
+  const cred = await navigator.credentials.create({ publicKey: {
+    challenge: _rand(), rp: { name: "norma-ventas" },
+    user: { id: _rand(16), name, displayName: name },
+    pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+    authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
+    timeout: 60000,
+  } });
+  if (!cred) throw new Error("No se pudo registrar la biometría.");
+  localStorage.setItem(BIO_KEY, _b64u(cred.rawId));
+  return true;
+}
+async function bioVerify() {
+  if (!bioSupported()) throw new Error("Sin soporte de biometría.");
+  const id = localStorage.getItem(BIO_KEY);
+  if (!id) throw new Error("No hay biometría registrada en este dispositivo.");
+  const assertion = await navigator.credentials.get({ publicKey: {
+    challenge: _rand(), allowCredentials: [{ type: "public-key", id: _unb64u(id) }], userVerification: "required", timeout: 60000,
+  } });
+  return !!assertion;
+}
+
+function BioLock({ onUnlock, onLogout }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const tryUnlock = async () => {
+    setBusy(true); setErr("");
+    try { await bioVerify(); onUnlock(); }
+    catch (e) { setErr(e.message || "No se pudo verificar."); setBusy(false); }
+  };
+  return (
+    <div className="av-root"><style>{CSS}</style>
+      <div className="av-empty" style={{ gap: 16, padding: "0 28px" }}>
+        <div style={{ fontSize: 46 }}>🔒</div>
+        <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 18, color: "var(--ink)" }}>Panel bloqueado</div>
+        <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>Verifica tu identidad con Face ID, Touch ID o huella para entrar.</div>
+        {err && <div style={{ fontSize: 12, color: "#D33" }}>{err}</div>}
+        <button className="av-btn primary" style={{ maxWidth: 280 }} disabled={busy} onClick={tryUnlock}>{busy ? "Verificando…" : "🔓 Desbloquear"}</button>
+        <button className="av-btn ghost" style={{ flex: "none", padding: "10px 18px" }} onClick={onLogout}>Salir e iniciar sesión de nuevo</button>
+      </div>
+    </div>
+  );
+}
+
 function SellerApp({ onExit }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
   useEffect(() => {
     getSession().then((s) => { setSession(s); setChecking(false); });
     const unsub = onAuthChange((s) => setSession(s));
     return unsub;
   }, []);
   if (checking) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando…</div></div>;
-  if (!session) return <LoginScreen onDone={(s) => setSession(s)} onBack={onExit} />;
-  return <Main onLogout={() => { setSession(null); if (onExit) onExit(); }} />;
+  if (!session) return <LoginScreen onDone={(s) => { setSession(s); setUnlocked(false); }} onBack={onExit} />;
+  if (bioEnabled() && !unlocked) return <BioLock onUnlock={() => setUnlocked(true)} onLogout={async () => { await signOut(); setSession(null); setUnlocked(false); if (onExit) onExit(); }} />;
+  return <Main onLogout={() => { setSession(null); setUnlocked(false); if (onExit) onExit(); }} />;
 }
 
 /* ---- Vitrina pública: la tienda, con acceso secreto al panel ---- */
@@ -1425,12 +1483,42 @@ function SellerNotify({ store }) {
   );
 }
 
+function SellerSecurity({ store }) {
+  const [on, setOn] = useState(bioEnabled());
+  const [can, setCan] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { bioPlatformAvailable().then(setCan); }, []);
+  const toggle = async () => {
+    if (on) { bioDisable(); setOn(false); return; }
+    setBusy(true);
+    try { await bioRegister(store?.name || "vendedor"); setOn(true); alert("Listo. La próxima vez que entres al panel te pedirá Face ID / Touch ID / huella."); }
+    catch (e) { alert(e.message || "No se pudo activar."); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="av-field" style={{ paddingTop: 4 }}>
+      <label>Seguridad biométrica (este dispositivo)</label>
+      <div className="av-srow2" style={{ borderTop: 0 }}>
+        <div>{I.lock({ width: 20, height: 20 })}</div>
+        <div style={{ flex: 1 }}>
+          <div className="av-name">Desbloquear con Face ID / huella</div>
+          <div className="av-cat" style={{ marginTop: 2 }}>{can ? (on ? "Activado en este dispositivo" : "Pide tu rostro o huella al abrir el panel") : "No disponible en este dispositivo o navegador"}</div>
+        </div>
+        <button className={"av-toggle" + (on ? " on" : "")} disabled={!can || busy} onClick={toggle}><span className="kn" /></button>
+      </div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Segunda barrera además de tu contraseña. Se configura por dispositivo: si cambias de teléfono, actívalo de nuevo allí.</p>
+    </div>
+  );
+}
+
 function SellerStore({ store, onUpdateStore }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
   const b = store.bank || {};
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
+      <SellerSecurity store={store} />
+      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
       <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
       <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
       <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
