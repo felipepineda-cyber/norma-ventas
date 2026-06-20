@@ -52,7 +52,7 @@ const CSS = `
   .av-card:hover{transform:translateY(-3px);}
 }
 /* ---- Estilo vidrio (iOS) ---- */
-.av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#23232E;--muted:#3C3C48;}
+.av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#15151B;--muted:#2A2A33;}
 .av-glass .av-screen{background:transparent;}
 .av-glass .av-top{background:rgba(255,255,255,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.6);}
 .av-glass .av-nav{background:rgba(255,255,255,.5);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border-top:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}
@@ -382,6 +382,17 @@ const I = {
 };
 const Stars = ({ v, size = 13 }) => (<span style={{ display: "inline-flex", gap: 1, color: "var(--gold)" }}>{[1, 2, 3, 4, 5].map((n) => I.star(n <= Math.round(v))({ key: n, width: size, height: size }))}</span>);
 
+/* Configuración libre del encabezado (logo y título) */
+function headerCfg(store) {
+  const h = (store.theme && store.theme.header) || {};
+  return {
+    logoSize: h.logoSize || 40,
+    titleSize: h.titleSize || 17,
+    titleColor: h.titleColor || null,
+    align: h.align || "left",
+  };
+}
+
 /* Clase CSS del estilo elegido (se aplica a comprador Y vendedor) */
 function styleClass(store) {
   const t = store.theme || {};
@@ -692,8 +703,8 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
 
   return (
     <>
-      <div className="av-top">
-        <div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
+      <div className="av-top" style={{ justifyContent: headerCfg(store).align === "center" ? "center" : undefined }}>
+        <div className="av-store" style={headerCfg(store).align === "center" ? { flex: 1, justifyContent: "center" } : undefined}><StoreLogo store={store} size={headerCfg(store).logoSize} radius={Math.round(headerCfg(store).logoSize * 0.3)} fontSize={Math.round(headerCfg(store).logoSize * 0.52)} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: headerCfg(store).titleSize, color: headerCfg(store).titleColor || undefined }}>{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
         <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
         {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">🧑‍💼 Vendedor</button>}
         {onSecretAdmin && <button onClick={onSecretAdmin} aria-hidden="true" tabIndex={-1} title="" style={{ position: "absolute", top: 0, right: 0, width: 52, height: 52, opacity: 0, background: "transparent", border: 0, padding: 0, margin: 0, zIndex: 50 }} />}
@@ -915,7 +926,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
   const tabs = [["vista", "Vista"], ["productos", "Productos"], ["stock", "Stock"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`], ["marca", "Marca"], ["tienda", "Tienda"]];
   return (
     <>
-      <div className="av-top"><div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className="av-sii">Panel del vendedor</span></div></div>{onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Ver la tienda como comprador">🛍️ Comprador</button>}<button className="av-iconbtn" onClick={handleLogout} title="Salir">{I.lock({ width: 18, height: 18 })}</button></div>
+      <div className="av-top"><div className="av-store"><StoreLogo store={store} size={headerCfg(store).logoSize} radius={Math.round(headerCfg(store).logoSize * 0.3)} fontSize={Math.round(headerCfg(store).logoSize * 0.52)} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: headerCfg(store).titleSize, color: headerCfg(store).titleColor || undefined }}>{store.name}</div><span className="av-sii">Panel del vendedor</span></div></div>{onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Ver la tienda como comprador">🛍️ Comprador</button>}<button className="av-iconbtn" onClick={handleLogout} title="Salir">{I.lock({ width: 18, height: 18 })}</button></div>
       <div className="av-screen">
         <div className="av-tabbar">{tabs.map(([k, l]) => <div key={k} className={"av-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</div>)}</div>
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
@@ -1262,6 +1273,8 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   const t = store.theme || {};
   const upT = (k, v) => onUpdateStore({ ...store, theme: { ...t, [k]: v } });
   const slides = (store.slides && store.slides.length) ? store.slides : [{ eyebrow: store.promo.eyebrow, title: store.promo.title, sub: store.promo.sub }];
+  const hc = headerCfg(store);
+  const upH = (k, v) => onUpdateStore({ ...store, theme: { ...t, header: { ...(t.header || {}), [k]: v } } });
   const setSlides = (arr) => onUpdateStore({ ...store, slides: arr });
   const upSlide = (idx, k, v) => setSlides(slides.map((s, i) => (i === idx ? { ...s, [k]: v } : s)));
   const addSlide = () => setSlides([...slides, { eyebrow: "Novedad", title: "Nuevo banner", sub: "" }]);
@@ -1303,6 +1316,16 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
           })}
         </div>
         <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>El estilo se aplica a la tienda y al panel. Elige un color de fondo para que los estilos de vidrio luzcan.</p>
+      </div>
+
+      <div className="av-field"><label>Encabezado (logo y título)</label>
+        <div className="av-themebox">
+          <div className="av-themerow"><span>Tamaño del logo</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="28" max="80" step="2" value={hc.logoSize} onChange={(e) => upH("logoSize", Number(e.target.value))} /><span style={{ width: 38, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{hc.logoSize}px</span></div></div>
+          <div className="av-themerow"><span>Tamaño del título</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="13" max="34" step="1" value={hc.titleSize} onChange={(e) => upH("titleSize", Number(e.target.value))} /><span style={{ width: 38, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{hc.titleSize}px</span></div></div>
+          <div className="av-themerow"><span>Color del título</span><div style={{ display: "flex", alignItems: "center", gap: 8 }}>{hc.titleColor && <button className="av-btn ghost" style={{ flex: "none", padding: "5px 9px", fontSize: 11 }} onClick={() => upH("titleColor", null)}>Auto</button>}<input type="color" className="av-colorpick" value={hc.titleColor || "#14141B"} onChange={(e) => upH("titleColor", e.target.value)} /></div></div>
+          <div className="av-themerow" style={{ borderBottom: 0 }}><span>Posición</span><div style={{ display: "flex", gap: 6 }}>{[["left", "Izquierda"], ["center", "Centrado"]].map(([v, l]) => <button key={v} className={"av-stylecard" + (hc.align === v ? " on" : "")} style={{ padding: "6px 12px" }} onClick={() => upH("align", v)}><span className="av-stylename" style={{ fontSize: 12 }}>{l}</span></button>)}</div></div>
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Cambia cómo se ve el logo y el nombre arriba, en la tienda y en el panel.</p>
       </div>
 
       <div className="av-field"><label>Color de fondo de la tienda</label>
