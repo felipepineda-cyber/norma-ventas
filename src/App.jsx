@@ -29,18 +29,27 @@ const CSS = `
   .av-top{padding-top:calc(env(safe-area-inset-top) + 16px);}
   .av-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 10px);}
 }
-/* ---- Versión de escritorio (sitio web ancho) ---- */
+/* ---- Versión de escritorio (sitio web ancho, estilo Apple) ---- */
 @media (min-width:1024px){
   .av-stage{padding:0;gap:0;}
-  .av-phone{max-width:1080px;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;margin:0 auto;}
+  .av-phone{max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;margin:0;}
   .av-notch{display:none;}
-  .av-top{padding:18px 32px 14px;}
-  .av-promo{margin:18px 32px 6px;}
-  .av-shead{padding-left:32px;padding-right:32px;}
-  .av-frow{padding-left:32px;padding-right:32px;}
-  .av-grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;padding:20px 32px 32px;}
-  .av-pad{max-width:760px;margin-left:auto;margin-right:auto;}
-  .av-nav{max-width:1080px;margin:0 auto;}
+  .av-nav{display:none;}
+  /* Encabezado tipo sitio web: logo + navegación + acciones, centrado */
+  .av-top{position:sticky;top:0;padding:0 32px;height:64px;display:flex;align-items:center;gap:20px;justify-content:flex-start;}
+  .av-top > .av-store{margin-right:8px;}
+  .av-topnav{display:flex;gap:4px;margin-left:auto;}
+  .av-storename{font-size:17px;}
+  /* Contenido del comprador: ancho y aireado */
+  .av-pad.av-buyerpad{max-width:1120px;margin-left:auto;margin-right:auto;width:100%;padding-left:32px;padding-right:32px;}
+  .av-promo{margin:28px 0 14px;border-radius:22px;}
+  .av-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:24px;padding:8px 0 48px;}
+  .av-sheadrow,.av-shead{padding-left:0;padding-right:0;}
+  /* Panel de vendedor: contenido en columna legible y centrada */
+  .av-pad{max-width:780px;margin-left:auto;margin-right:auto;}
+  .av-tabbar{justify-content:center;}
+  .av-h1{font-size:30px;letter-spacing:-0.5px;}
+  .av-card:hover{transform:translateY(-3px);}
 }
 /* ---- Estilo vidrio (iOS) ---- */
 .av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#23232E;--muted:#3C3C48;}
@@ -139,6 +148,10 @@ const CSS = `
 .av-off{font-size:10px;font-weight:700;color:var(--hot);background:var(--hot-soft);padding:2px 6px;border-radius:6px;font-family:'Space Grotesk';}
 .av-nav{position:absolute;bottom:0;left:0;right:0;z-index:40;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:9px 8px 16px;}
 .av-navb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;cursor:pointer;color:var(--muted);position:relative;}
+.av-topnav{display:none;}
+.av-topnavb{border:0;background:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;color:var(--ink2);padding:8px 14px;border-radius:10px;transition:.15s;}
+.av-topnavb:hover{background:var(--soft);}
+.av-topnavb.on{background:var(--accent-soft);color:var(--accent);}
 .av-navb span{font-size:10px;font-weight:600;font-family:'Space Grotesk';}
 .av-navb.on{color:var(--accent);}
 .av-navb .ndot{position:absolute;top:-3px;right:50%;margin-right:-18px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--hot);color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;}
@@ -681,11 +694,12 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
     <>
       <div className="av-top">
         <div className="av-store"><StoreLogo store={store} /><div className="av-storetext"><div className="av-storename">{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
+        <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
         {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">🧑‍💼 Vendedor</button>}
         {onSecretAdmin && <button onClick={onSecretAdmin} aria-hidden="true" tabIndex={-1} title="" style={{ position: "absolute", top: 0, right: 0, width: 52, height: 52, opacity: 0, background: "transparent", border: 0, padding: 0, margin: 0, zIndex: 50 }} />}
       </div>
       <div className="av-screen">
-        <div className="av-pad">
+        <div className="av-pad av-buyerpad">
           {tab === "home" && <Home store={store} products={visible} favs={favs} toggleFav={toggleFav} open={open} goSearch={() => setTab("search")} />}
           {tab === "search" && <Search products={visible} filters={filters} setFilters={setFilters} favs={favs} toggleFav={toggleFav} open={open} />}
           {tab === "favs" && <Favs products={visible.filter((p) => favs.includes(p.id))} favs={favs} toggleFav={toggleFav} open={open} goHome={() => setTab("home")} />}
