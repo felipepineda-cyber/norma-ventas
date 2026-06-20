@@ -273,7 +273,7 @@ export async function createOrder(storeId, { buyer, cart, total, comprobanteFile
   }
 
   const code = "PED-" + Math.floor(1000 + Math.random() * 9000);
-  const status = paymentMethod === "efectivo" ? "Pago en efectivo" : "Pago en revisión";
+  const status = paymentMethod === "efectivo" ? "Pago en efectivo" : paymentMethod === "mercadopago" ? "Pago pendiente" : "Pago en revisión";
   const items_summary = cart.map((i) => `${i.name}${i.size && i.size !== "Única" ? " " + i.size : ""} (${i.color}) x${i.qty}`).join(", ");
   const { data: order, error } = await supabase
     .from("orders")
@@ -322,6 +322,18 @@ export async function updateOrderStatus(orderId, status) {
   const { data, error } = await supabase.from("orders").update({ status }).eq("id", orderId).select().single();
   if (error) throw error;
   return data;
+}
+
+// Inicia un pago con Mercado Pago (Checkout Pro). Llama a la Edge Function
+// "crear-pago", que crea la preferencia con el Access Token (secreto) y
+// devuelve la URL de pago a la que se redirige al cliente.
+export async function crearPagoMP({ items, orderId, orderCode, payerName }) {
+  const { data, error } = await supabase.functions.invoke("crear-pago", {
+    body: { items, orderId, orderCode, payer: { name: payerName }, backUrl: window.location.origin },
+  });
+  if (error) throw new Error(error.message || "No se pudo iniciar el pago.");
+  if (data?.error) throw new Error(data.error);
+  return data; // { id, init_point, sandbox_init_point }
 }
 
 // Editar campos del pedido (cliente, teléfono, total, método, estado)
