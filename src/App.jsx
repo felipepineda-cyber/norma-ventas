@@ -43,16 +43,16 @@ const CSS = `
   .av-nav{max-width:1080px;margin:0 auto;}
 }
 /* ---- Estilo vidrio (iOS) ---- */
-.av-phone.av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#23232E;--muted:#3C3C48;}
-.av-phone.av-glass .av-screen{background:transparent;}
-.av-phone.av-glass .av-top{background:rgba(255,255,255,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.6);}
-.av-phone.av-glass .av-nav{background:rgba(255,255,255,.5);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border-top:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}
-.av-phone.av-glass .av-card{background:rgba(255,255,255,.6);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 10px 30px -18px rgba(20,20,50,.5);}
-.av-phone.av-glass .av-bottombar{background:rgba(255,255,255,.58);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-top:1px solid rgba(255,255,255,.5);}
-.av-phone.av-glass .av-sheet{background:rgba(255,255,255,.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 -10px 40px -10px rgba(20,20,50,.3);}
-.av-phone.av-glass .av-search{background:rgba(255,255,255,.5);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,.55);}
-.av-phone.av-glass .av-chip{background:rgba(255,255,255,.5);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
-.av-phone.av-glass .av-iconbtn{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
+.av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#23232E;--muted:#3C3C48;}
+.av-glass .av-screen{background:transparent;}
+.av-glass .av-top{background:rgba(255,255,255,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.6);}
+.av-glass .av-nav{background:rgba(255,255,255,.5);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border-top:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.7);}
+.av-glass .av-card{background:rgba(255,255,255,.6);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 10px 30px -18px rgba(20,20,50,.5);}
+.av-glass .av-bottombar{background:rgba(255,255,255,.58);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border-top:1px solid rgba(255,255,255,.5);}
+.av-glass .av-sheet{background:rgba(255,255,255,.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 -10px 40px -10px rgba(20,20,50,.3);}
+.av-glass .av-search{background:rgba(255,255,255,.5);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,.55);}
+.av-glass .av-chip{background:rgba(255,255,255,.5);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
+.av-glass .av-iconbtn{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
 .av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--shop-bg, var(--surface));}
 .av-screen::-webkit-scrollbar{width:0;}
 .av-pad{padding-bottom:96px;}
@@ -897,7 +897,7 @@ function SellerShowcase({ store, products, onUpdateStore, onToggle, onSetOffer, 
       <div className="av-shead" style={{ paddingBottom: 8 }}><h3 style={{ fontSize: 16 }}>Así lo ve tu cliente</h3></div>
       <p className="av-hint" style={{ textAlign: "left", marginTop: -4, marginBottom: 8 }}>El carrusel de ofertas ahora se edita en la pestaña <b>Marca</b>.</p>
       <div className="av-chips" style={{ paddingTop: 0 }}>{cats.map((c) => <button key={c} className={"av-chip" + (cat === c ? " on" : "")} onClick={() => setCat(c)}>{c}</button>)}</div>
-      <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className="av-prevscroll"><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
+      <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className={"av-prevscroll" + (store.theme?.glass ? " av-glass" : "")} style={{ ...shopVars(store), background: store.theme?.bg || undefined }}><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
       <div className="av-shead" style={{ paddingBottom: 6 }}><h3 style={{ fontSize: 16 }}>Ordenar, destacar y ofertas</h3></div>
       {products.map((p, idx) => (
         <div key={p.id} className="av-merch">
