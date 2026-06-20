@@ -53,6 +53,25 @@ const CSS = `
 .av-glass .av-search{background:rgba(255,255,255,.5);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,.55);}
 .av-glass .av-chip{background:rgba(255,255,255,.5);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
 .av-glass .av-iconbtn{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
+/* superficies del panel de vendedor bajo vidrio */
+.av-glass .av-input,.av-glass .av-select,.av-glass .av-srow2,.av-glass .av-orderc,.av-glass .av-acc,.av-glass .av-themebox,.av-glass .av-merch,.av-glass .av-preview,.av-glass .av-prevscroll,.av-glass .av-feat{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
+/* ---- Estilo: Vidrio oscuro ---- */
+.av-glassdark{--ink:#F4F4F7;--ink2:#D8D8DF;--muted:#A2A2AD;background:var(--shop-bg, #15151B);}
+.av-glassdark .av-top,.av-glassdark .av-nav,.av-glassdark .av-card,.av-glassdark .av-bottombar,.av-glassdark .av-sheet,.av-glassdark .av-search,.av-glassdark .av-chip,.av-glassdark .av-iconbtn,.av-glassdark .av-input,.av-glassdark .av-select,.av-glassdark .av-srow2,.av-glassdark .av-orderc,.av-glassdark .av-acc,.av-glassdark .av-themebox,.av-glassdark .av-merch,.av-glassdark .av-preview,.av-glassdark .av-prevscroll,.av-glassdark .av-feat{background:rgba(40,40,48,.55);border-color:rgba(255,255,255,.12);color:var(--ink);}
+.av-glassdark .av-name,.av-glassdark .av-pagetitle,.av-glassdark .av-accmon,.av-glassdark h3,.av-glassdark .av-input{color:var(--ink);}
+.av-glassdark .av-input::placeholder{color:var(--muted);}
+/* ---- Estilo: Minimal ---- */
+.av-minimal{background:var(--shop-bg, #FAFAFB);--ink2:#3A3A44;}
+.av-minimal .av-card{box-shadow:none;border:1px solid #ECECEF;}
+.av-minimal .av-top{background:rgba(255,255,255,.92);border-bottom:1px solid #F0F0F2;}
+.av-minimal .av-nav{background:rgba(255,255,255,.96);border-top:1px solid #F0F0F2;}
+.av-minimal .av-srow2,.av-minimal .av-orderc,.av-minimal .av-acc,.av-minimal .av-themebox,.av-minimal .av-merch{box-shadow:none;border:1px solid #F0F0F2;}
+/* selector de estilo en Marca */
+.av-stylegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.av-stylecard{text-align:left;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:2px;font-family:inherit;}
+.av-stylecard.on{border-color:var(--accent);background:var(--accent-soft);}
+.av-stylename{font-weight:700;font-size:13px;color:var(--ink);}
+.av-styledesc{font-size:11px;color:var(--muted);}
 .av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--shop-bg, var(--surface));}
 .av-screen::-webkit-scrollbar{width:0;}
 .av-pad{padding-bottom:96px;}
@@ -321,7 +340,7 @@ function mapStore(row) {
   return {
     id: row.id, name: row.name, emoji: emojiOf(row.emoji, "🛍️"), logoA: row.logo_a || "#3B2BFF", logoB: row.logo_b || "#7A4DFF",
     logoUrl: row.logo_url || null,
-    theme: { bg: "#FFFFFF", cardBorderColor: "#ECECF2", cardBorderWidth: 1, cardRadius: 18, cardShadow: true, glass: false, ...(row.theme || {}) },
+    theme: { bg: "#FFFFFF", cardBorderColor: "#ECECF2", cardBorderWidth: 1, cardRadius: 18, cardShadow: true, glass: false, style: "clasico", ...(row.theme || {}) },
     sii: !!row.sii, whatsapp: row.whatsapp || "",
     promo: { eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" },
     slides: Array.isArray(row.slides) && row.slides.length ? row.slides : [{ eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" }],
@@ -349,6 +368,16 @@ const I = {
   chev: (p) => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m9 18 6-6-6-6"/></svg>),
 };
 const Stars = ({ v, size = 13 }) => (<span style={{ display: "inline-flex", gap: 1, color: "var(--gold)" }}>{[1, 2, 3, 4, 5].map((n) => I.star(n <= Math.round(v))({ key: n, width: size, height: size }))}</span>);
+
+/* Clase CSS del estilo elegido (se aplica a comprador Y vendedor) */
+function styleClass(store) {
+  const t = store.theme || {};
+  const s = (t.style && t.style !== "clasico") ? t.style : (t.glass ? "glass" : "clasico");
+  if (s === "glass") return "av-glass";
+  if (s === "glassdark") return "av-glass av-glassdark";
+  if (s === "minimal") return "av-minimal";
+  return "";
+}
 
 /* Variables CSS del tema configurable de la tienda (fondo y bordes de tarjetas) */
 function shopVars(store) {
@@ -423,7 +452,7 @@ function StoreFront({ storeId }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className={"av-phone" + (store.theme?.glass ? " av-glass" : "")} style={shopVars(store)}>
+        <div className={"av-phone " + styleClass(store)} style={shopVars(store)}>
           <div className="av-notch" />
           <Buyer store={store} products={products} onCreateOrder={createOrderH} onSecretAdmin={() => setShowSeller(true)} />
         </div>
@@ -599,7 +628,7 @@ function Main({ onLogout }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-stage">
-        <div className={"av-phone" + (mode === "buyer" && store.theme?.glass ? " av-glass" : "")} style={mode === "buyer" ? shopVars(store) : undefined}>
+        <div className={"av-phone " + styleClass(store)} style={shopVars(store)}>
           <div className="av-notch" />
           {mode === "buyer"
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
@@ -897,7 +926,7 @@ function SellerShowcase({ store, products, onUpdateStore, onToggle, onSetOffer, 
       <div className="av-shead" style={{ paddingBottom: 8 }}><h3 style={{ fontSize: 16 }}>Así lo ve tu cliente</h3></div>
       <p className="av-hint" style={{ textAlign: "left", marginTop: -4, marginBottom: 8 }}>El carrusel de ofertas ahora se edita en la pestaña <b>Marca</b>.</p>
       <div className="av-chips" style={{ paddingTop: 0 }}>{cats.map((c) => <button key={c} className={"av-chip" + (cat === c ? " on" : "")} onClick={() => setCat(c)}>{c}</button>)}</div>
-      <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className={"av-prevscroll" + (store.theme?.glass ? " av-glass" : "")} style={{ ...shopVars(store), background: store.theme?.bg || undefined }}><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
+      <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className={"av-prevscroll " + styleClass(store)} style={{ ...shopVars(store), background: store.theme?.bg || undefined }}><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
       <div className="av-shead" style={{ paddingBottom: 6 }}><h3 style={{ fontSize: 16 }}>Ordenar, destacar y ofertas</h3></div>
       {products.map((p, idx) => (
         <div key={p.id} className="av-merch">
@@ -1252,9 +1281,14 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
       <div style={{ height: 1, background: "var(--line)", margin: "6px 0 16px" }} />
       <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Apariencia de la tienda</div>
 
-      <div className="av-field">
-        <div className="av-themebox"><div className="av-themerow" style={{ borderBottom: 0 }}><span>Estilo vidrio (iOS) 🪟</span><button className={"av-toggle" + ((t.glass ?? false) ? " on" : "")} onClick={() => upT("glass", !(t.glass ?? false))}><span className="kn" /></button></div></div>
-        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Superficies translúcidas tipo vidrio esmerilado, con el color de fondo llenando toda la pantalla. Elige un color de fondo para que luzca.</p>
+      <div className="av-field"><label>Estilo de la tienda y el panel</label>
+        <div className="av-stylegrid">
+          {[["clasico", "Clásico", "Limpio y blanco"], ["glass", "Vidrio (iOS)", "Translúcido claro"], ["glassdark", "Vidrio oscuro", "Translúcido oscuro"], ["minimal", "Minimal", "Plano y elegante"]].map(([v, l, d]) => {
+            const cur = (t.style && t.style !== "clasico") ? t.style : (t.glass ? "glass" : "clasico");
+            return <button key={v} className={"av-stylecard" + (cur === v ? " on" : "")} onClick={() => onUpdateStore({ ...store, theme: { ...t, style: v, glass: v === "glass" } })}><span className="av-stylename">{l}</span><span className="av-styledesc">{d}</span></button>;
+          })}
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>El estilo se aplica a la tienda y al panel. Elige un color de fondo para que los estilos de vidrio luzcan.</p>
       </div>
 
       <div className="av-field"><label>Color de fondo de la tienda</label>
