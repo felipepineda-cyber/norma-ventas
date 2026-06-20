@@ -29,6 +29,19 @@ const CSS = `
   .av-top{padding-top:calc(env(safe-area-inset-top) + 16px);}
   .av-nav{padding-bottom:calc(env(safe-area-inset-bottom) + 10px);}
 }
+/* ---- Versión de escritorio (sitio web ancho) ---- */
+@media (min-width:1024px){
+  .av-stage{padding:0;gap:0;}
+  .av-phone{max-width:1080px;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;margin:0 auto;}
+  .av-notch{display:none;}
+  .av-top{padding:18px 32px 14px;}
+  .av-promo{margin:18px 32px 6px;}
+  .av-shead{padding-left:32px;padding-right:32px;}
+  .av-frow{padding-left:32px;padding-right:32px;}
+  .av-grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;padding:20px 32px 32px;}
+  .av-pad{max-width:760px;margin-left:auto;margin-right:auto;}
+  .av-nav{max-width:1080px;margin:0 auto;}
+}
 /* ---- Estilo vidrio (iOS) ---- */
 .av-phone.av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#23232E;--muted:#3C3C48;}
 .av-phone.av-glass .av-screen{background:transparent;}
