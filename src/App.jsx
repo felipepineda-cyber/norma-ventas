@@ -1555,20 +1555,33 @@ function SellerStore({ store, onUpdateStore }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
   const b = store.bank || {};
+  const [openSet, setOpenSet] = useState(() => new Set(["seguridad"]));
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
-      <SellerSecurity store={store} />
-      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
-      <SellerPayments store={store} onUpdateStore={onUpdateStore} />
-      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
-      <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
-      <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
-      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
-      <SellerNotify store={store} />
-      <div className="av-shead" style={{ paddingBottom: 0 }}><h3 style={{ fontSize: 14 }}>Datos bancarios</h3></div>
-      {[["banco", "Banco"], ["tipo", "Tipo de cuenta"], ["numero", "N° de cuenta"], ["rut", "RUT"], ["titular", "Titular"], ["correo", "Correo"]].map(([k, l]) => (
-        <div key={k} className="av-field"><label>{l}</label><input className="av-input" value={b[k] || ""} onChange={(e) => upBank(k, e.target.value)} /></div>
-      ))}
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Toca cada sección para desplegarla.</p>
+
+      <BrandSection id="seguridad" title="Seguridad" openSet={openSet} setOpenSet={setOpenSet}>
+        <SellerSecurity store={store} />
+      </BrandSection>
+
+      <BrandSection id="pagos" title="Pagos con Mercado Pago" openSet={openSet} setOpenSet={setOpenSet}>
+        <SellerPayments store={store} onUpdateStore={onUpdateStore} />
+      </BrandSection>
+
+      <BrandSection id="datos" title="Datos de la tienda" openSet={openSet} setOpenSet={setOpenSet}>
+        <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
+        <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
+      </BrandSection>
+
+      <BrandSection id="avisos" title="Avisos por WhatsApp (chatbot)" openSet={openSet} setOpenSet={setOpenSet}>
+        <SellerNotify store={store} />
+      </BrandSection>
+
+      <BrandSection id="banco" title="Datos bancarios" openSet={openSet} setOpenSet={setOpenSet}>
+        {[["banco", "Banco"], ["tipo", "Tipo de cuenta"], ["numero", "N° de cuenta"], ["rut", "RUT"], ["titular", "Titular"], ["correo", "Correo"]].map(([k, l]) => (
+          <div key={k} className="av-field"><label>{l}</label><input className="av-input" value={b[k] || ""} onChange={(e) => upBank(k, e.target.value)} /></div>
+        ))}
+      </BrandSection>
     </div>
   );
 }
