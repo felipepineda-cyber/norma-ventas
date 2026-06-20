@@ -324,6 +324,19 @@ export async function updateOrderStatus(orderId, status) {
   return data;
 }
 
+// Editar campos del pedido (cliente, teléfono, total, método, estado)
+export async function updateOrder(orderId, patch) {
+  const { data, error } = await supabase.from("orders").update(patch).eq("id", orderId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Eliminar un pedido (sus productos se borran en cascada)
+export async function deleteOrder(orderId) {
+  const { error } = await supabase.from("orders").delete().eq("id", orderId);
+  if (error) throw error;
+}
+
 // URL temporal y firmada para ver un comprobante (bucket privado)
 export async function getComprobanteUrl(path, seconds = 3600) {
   if (!path) return null;

@@ -2,12 +2,12 @@
 // Login real + tienda + catálogo + comprador (checkout con comprobante) +
 // panel vendedor completo. Todo lee/escribe en Supabase vía src/lib/api.js.
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
   getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
-  createOrder, listOrders, updateOrderStatus, getComprobanteUrl, upsertStore, uploadStoreLogo,
+  createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
 
 /* ------------------------------ Estilos ----------------------------- */
@@ -198,6 +198,11 @@ const CSS = `
 .av-tag.featured{background:var(--accent-soft);color:var(--accent);}
 .av-tag.off{background:#F1F1F4;color:var(--muted);}
 .av-orderc{margin:13px 18px;border:1px solid var(--line);border-radius:16px;padding:15px;}
+.av-acc{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;font-family:inherit;}
+.av-accmon{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--ink);}
+.av-acccount{font-size:12px;color:var(--muted);margin-top:2px;}
+.av-accarrow{font-size:15px;color:var(--muted);transition:transform .22s ease;}
+.av-accarrow.open{transform:rotate(180deg);}
 .av-status{font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;font-family:'Space Grotesk';}
 .av-select{border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;font-family:'Space Grotesk';font-weight:600;background:#fff;width:100%;margin-top:9px;color:var(--ink);}
 .av-addbtn{margin:16px 18px;width:calc(100% - 36px);}
@@ -482,7 +487,7 @@ function Main({ onLogout }) {
       if (o.comprobante_path) { try { url = await getComprobanteUrl(o.comprobante_path); } catch { /* noop */ } }
       return {
         dbId: o.id, id: o.code, status: o.status, total: o.total, method: o.payment_method || "transferencia",
-        date: new Date(o.created_at).toLocaleDateString("es-CL"),
+        date: new Date(o.created_at).toLocaleDateString("es-CL"), createdAt: o.created_at,
         buyer: { name: o.buyer_name, phone: o.buyer_phone },
         comprobante: { name: (o.comprobante_path || "").split("/").pop() || "comprobante", url },
         items: (o.order_items || []).map((i) => ({ key: i.id, name: i.name, color: i.color, size: i.size, qty: i.qty, price: i.unit_price })),
@@ -566,6 +571,14 @@ function Main({ onLogout }) {
     setOrders((arr) => arr.map((o) => (o.dbId === dbId ? { ...o, status } : o)));
     try { await updateOrderStatus(dbId, status); } catch (e) { alert(e.message); }
   };
+  const editOrderH = async (dbId, patch) => {
+    try { await updateOrder(dbId, patch); await reloadOrders(store.id); }
+    catch (e) { alert(e.message); }
+  };
+  const deleteOrderH = async (dbId) => {
+    setOrders((arr) => arr.filter((o) => o.dbId !== dbId));
+    try { await deleteOrder(dbId); } catch (e) { alert(e.message); reloadOrders(store.id); }
+  };
 
   if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando tu tienda…</div></div>;
   if (error) return <div className="av-root"><style>{CSS}</style><div className="av-empty">{error}<button className="av-btn dark" style={{ flex: "none", padding: "11px 22px", marginTop: 10 }} onClick={onLogout}>Volver al login</button></div></div>;
@@ -579,7 +592,7 @@ function Main({ onLogout }) {
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
             : <Seller store={store} products={products} orders={orders} stockLog={stockLog}
                 onLogout={onLogout} onToggle={toggleProduct} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
-                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} />}
+                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} onEditOrder={editOrderH} onDeleteOrder={deleteOrderH} />}
         </div>
       </div>
     </div>
@@ -840,7 +853,7 @@ function Done({ store, order, onHome }) {
 }
 
 /* ============================ VENDEDOR ============================ */
-function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct }) {
+function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onEditOrder, onDeleteOrder }) {
   const [tab, setTab] = useState("productos");
   const handleLogout = async () => { await signOut(); onLogout(); };
   const tabs = [["vista", "Vista"], ["productos", "Productos"], ["stock", "Stock"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`], ["marca", "Marca"], ["tienda", "Tienda"]];
@@ -852,7 +865,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
         {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onSetStock={onSetStock} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
-        {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} />}
+        {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
         {tab === "tienda" && <SellerStore store={store} onUpdateStore={onUpdateStore} />}
       </div>
@@ -1106,19 +1119,83 @@ function downloadCSV(text, nombre) {
   URL.revokeObjectURL(url);
 }
 
-function SellerOrders({ orders, onSetStatus, stockLog }) {
+function OrderCard({ o, onSetStatus }) {
+  const sc = STATUS_COLOR[o.status] || STATUS_COLOR["Pago en revisión"];
+  return (
+    <div className="av-orderc" style={{ margin: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontFamily: "Space Grotesk", fontWeight: 700 }}>{o.id}</div><span className="av-status" style={{ background: sc.bg, color: sc.c }}>{o.status}</span></div><div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.date} · {o.buyer.name} · {o.buyer.phone}</div><div style={{ marginTop: 6 }}><span className="av-tag" style={{ background: o.method === "efectivo" ? "#E9F7EF" : "var(--accent-soft)", color: o.method === "efectivo" ? "#15803D" : "var(--accent)" }}>{o.method === "efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}</span></div><div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>{o.items.map((i) => <div key={i.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "var(--ink2)" }}>{i.name} {i.size !== "Única" ? "· " + i.size : ""} ({i.color}) ×{i.qty}</span><span style={{ fontWeight: 600 }}>{CLP(i.price * i.qty)}</span></div>)}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 10 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{o.method === "efectivo" ? "Total a cobrar" : "Comprobante"}</span><span className="av-price" style={{ fontSize: 15 }}>{CLP(o.total)}</span></div>{o.comprobante?.url && <a href={o.comprobante.url} target="_blank" rel="noreferrer"><img src={o.comprobante.url} alt="comprobante" style={{ width: "100%", borderRadius: 12, marginTop: 10, maxHeight: 180, objectFit: "cover" }} /></a>}<select className="av-select" value={o.status} onChange={(e) => onSetStatus(o.dbId, e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+  );
+}
+
+function EditOrder({ order, onCancel, onSave }) {
+  const [f, setF] = useState({ name: order.buyer.name || "", phone: order.buyer.phone || "", total: String(order.total ?? ""), method: order.method || "transferencia", status: order.status });
+  const up = (k, v) => setF({ ...f, [k]: v });
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave(order.dbId, { buyer_name: f.name.trim(), buyer_phone: f.phone.trim(), total: Number(f.total) || 0, payment_method: f.method, status: f.status });
+      onCancel();
+    } catch (e) { alert(e.message); setSaving(false); }
+  };
+  return (
+    <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
+      <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Editar pedido {order.id}</span></div>
+      <div className="av-field"><label>Cliente</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} /></div>
+      <div className="av-field"><label>WhatsApp del cliente</label><input className="av-input" value={f.phone} onChange={(e) => up("phone", e.target.value)} /></div>
+      <div className="av-field"><label>Total (CLP)</label><input className="av-input" type="number" value={f.total} onChange={(e) => up("total", e.target.value)} /></div>
+      <div className="av-field"><label>Método de pago</label><select className="av-input" value={f.method} onChange={(e) => up("method", e.target.value)}><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option></select></div>
+      <div className="av-field"><label>Estado</label><select className="av-input" value={f.status} onChange={(e) => up("status", e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+      <p className="av-hint" style={{ textAlign: "left" }}>Los productos del pedido no se editan aquí (puedes cambiar el total a mano si hace falta).</p>
+      <div className="av-bottombar"><button className="av-btn ghost" style={{ flex: "none", padding: "15px 18px" }} onClick={onCancel}>Cancelar</button><button className="av-btn primary" disabled={saving} onClick={save}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>
+    </div>
+  );
+}
+
+function SellerOrders({ orders, onSetStatus, stockLog, onEditOrder, onDeleteOrder }) {
   const hoy = new Date().toISOString().slice(0, 10);
+  const [editing, setEditing] = useState(null);
+  const groups = useMemo(() => {
+    const m = new Map();
+    for (const o of orders) {
+      const d = new Date(o.createdAt || Date.now());
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!m.has(key)) m.set(key, []);
+      m.get(key).push(o);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [orders]);
+  const [open, setOpen] = useState(() => new Set());
+  useEffect(() => { setOpen((s) => (s.size === 0 && groups[0] ? new Set([groups[0][0]]) : s)); }, [groups]);
+  const toggle = (key) => setOpen((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const monthLabel = (key) => { const [y, mo] = key.split("-"); const d = new Date(Number(y), Number(mo) - 1, 1); const t = d.toLocaleDateString("es-CL", { month: "long", year: "numeric" }); return t.charAt(0).toUpperCase() + t.slice(1); };
+
+  if (editing) return <EditOrder order={editing} onCancel={() => setEditing(null)} onSave={onEditOrder} />;
+
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 6 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <button className="av-btn dark" style={{ flex: "none", padding: "11px 14px" }} onClick={() => downloadCSV(ordersToCSV(orders), `pedidos-${hoy}.csv`)}>{I.up({ width: 16, height: 16 })} Pedidos (Excel)</button>
         <button className="av-btn dark" style={{ flex: "none", padding: "11px 14px" }} onClick={() => downloadCSV(stockLogToCSV(stockLog), `historial-stock-${hoy}.csv`)}>{I.up({ width: 16, height: 16 })} Historial de stock</button>
       </div>
-      {orders.length === 0
-        ? <div className="av-empty" style={{ paddingTop: 40 }}>{I.bag({ width: 32, height: 32 })}<div>Aún no hay pedidos.</div><div style={{ fontSize: 12 }}>Haz una compra desde la tienda y aparecerá aquí.</div></div>
-        : orders.map((o) => { const sc = STATUS_COLOR[o.status] || STATUS_COLOR["Pago en revisión"]; return (
-        <div key={o.dbId} className="av-orderc"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontFamily: "Space Grotesk", fontWeight: 700 }}>{o.id}</div><span className="av-status" style={{ background: sc.bg, color: sc.c }}>{o.status}</span></div><div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.date} · {o.buyer.name} · {o.buyer.phone}</div><div style={{ marginTop: 6 }}><span className="av-tag" style={{ background: o.method === "efectivo" ? "#E9F7EF" : "var(--accent-soft)", color: o.method === "efectivo" ? "#15803D" : "var(--accent)" }}>{o.method === "efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}</span></div><div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>{o.items.map((i) => <div key={i.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "var(--ink2)" }}>{i.name} {i.size !== "Única" ? "· " + i.size : ""} ({i.color}) ×{i.qty}</span><span style={{ fontWeight: 600 }}>{CLP(i.price * i.qty)}</span></div>)}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 10 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{o.method === "efectivo" ? "Total a cobrar" : "Comprobante"}</span><span className="av-price" style={{ fontSize: 15 }}>{CLP(o.total)}</span></div>{o.comprobante?.url && <a href={o.comprobante.url} target="_blank" rel="noreferrer"><img src={o.comprobante.url} alt="comprobante" style={{ width: "100%", borderRadius: 12, marginTop: 10, maxHeight: 180, objectFit: "cover" }} /></a>}<select className="av-select" value={o.status} onChange={(e) => onSetStatus(o.dbId, e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
-      ); })}
+      {orders.length === 0 && <div className="av-empty" style={{ paddingTop: 40 }}>{I.bag({ width: 32, height: 32 })}<div>Aún no hay pedidos.</div><div style={{ fontSize: 12 }}>Haz una compra desde la tienda y aparecerá aquí.</div></div>}
+      {orders.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Toca un mes para desplegarlo. Desliza un pedido a la izquierda para editar o eliminar.</p>}
+      {groups.map(([key, list]) => {
+        const isOpen = open.has(key);
+        const total = list.reduce((s, o) => s + (o.total || 0), 0);
+        return (
+          <div key={key} style={{ marginBottom: 12 }}>
+            <button className="av-acc" onClick={() => toggle(key)}>
+              <div style={{ textAlign: "left" }}><div className="av-accmon">{monthLabel(key)}</div><div className="av-acccount">{list.length} pedido{list.length !== 1 ? "s" : ""} · {CLP(total)}</div></div>
+              <span className={"av-accarrow" + (isOpen ? " open" : "")}>▾</span>
+            </button>
+            {isOpen && <div style={{ marginTop: 8 }}>{list.map((o) => (
+              <SwipeRow key={o.dbId} onEdit={() => setEditing(o)} onDelete={() => { if (window.confirm(`¿Eliminar el pedido ${o.id}? Esta acción no se puede deshacer.`)) onDeleteOrder(o.dbId); }}>
+                <OrderCard o={o} onSetStatus={onSetStatus} />
+              </SwipeRow>
+            ))}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
