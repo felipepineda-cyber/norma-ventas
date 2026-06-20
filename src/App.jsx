@@ -64,6 +64,9 @@ const CSS = `
 .av-promo .sub{font-size:13px;opacity:.9;margin-top:8px;}
 .av-promo .blob{position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.14);}
 .av-promo .blob2{position:absolute;right:30px;bottom:-50px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.1);}
+.av-dots{position:absolute;bottom:12px;right:16px;display:flex;gap:6px;z-index:2;}
+.av-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer;transition:.2s;}
+.av-dot.on{background:#fff;width:18px;border-radius:4px;}
 .av-shead{display:flex;align-items:baseline;justify-content:space-between;padding:22px 18px 12px;}
 .av-shead h3{font-family:'Space Grotesk';font-weight:700;font-size:18px;}
 .av-shead .all{font-size:12.5px;font-weight:600;color:var(--accent);background:none;border:0;cursor:pointer;display:flex;align-items:center;gap:2px;}
@@ -303,6 +306,7 @@ function mapStore(row) {
     theme: { bg: "#FFFFFF", cardBorderColor: "#ECECF2", cardBorderWidth: 1, cardRadius: 18, cardShadow: true, glass: false, ...(row.theme || {}) },
     sii: !!row.sii, whatsapp: row.whatsapp || "",
     promo: { eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" },
+    slides: Array.isArray(row.slides) && row.slides.length ? row.slides : [{ eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" }],
     bank: row.bank || {},
   };
 }
@@ -490,8 +494,12 @@ function Main({ onLogout }) {
   useEffect(() => {
     (async () => {
       try {
-        const s = await getMyStore();
-        if (!s) { setError("No se encontró tu tienda. Revisa el INSERT en Supabase."); setLoading(false); return; }
+        let s = await getMyStore();
+        if (!s) {
+          // Usuario logueado sin tienda (recién registrado): se la creamos.
+          try { s = await createMyStore(); } catch (e) { setError("No se pudo crear tu tienda: " + (e.message || e)); setLoading(false); return; }
+        }
+        if (!s) { setError("No se encontró tu tienda."); setLoading(false); return; }
         setStore(mapStore(s));
         await reloadProducts(s.id);
         await reloadOrders(s.id);
@@ -542,7 +550,7 @@ function Main({ onLogout }) {
   const updateStoreH = async (next) => {
     setStore(next);
     try {
-      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, theme: next.theme, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
+      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, theme: next.theme, slides: next.slides, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
     } catch (e) { alert(e.message); }
   };
   const uploadLogoH = async (file) => {
@@ -662,7 +670,27 @@ function AddedModal({ item, count, onGoCart, onKeep }) {
 }
 
 function PromoBanner({ store }) {
-  return (<div className="av-promo" style={grad(store.logoA, store.logoB)}><div className="blob" /><div className="blob2" /><div style={{ position: "relative" }}><div className="eyebrow">{store.promo.eyebrow}</div><div className="big">{store.promo.title}</div>{store.promo.sub && <div className="sub">{store.promo.sub}</div>}</div></div>);
+  const slides = (store.slides && store.slides.length) ? store.slides : [{ eyebrow: store.promo.eyebrow, title: store.promo.title, sub: store.promo.sub }];
+  const n = slides.length;
+  const [i, setI] = useState(0);
+  const sx = useRef(0);
+  useEffect(() => { if (n <= 1) return; const t = setInterval(() => setI((x) => (x + 1) % n), 4200); return () => clearInterval(t); }, [n]);
+  const idx = Math.min(i, n - 1);
+  const s = slides[idx];
+  const a = s.a || store.logoA, b = s.b || store.logoB;
+  const onTS = (e) => { sx.current = e.touches[0].clientX; };
+  const onTE = (e) => { const dx = e.changedTouches[0].clientX - sx.current; if (Math.abs(dx) > 40 && n > 1) setI((x) => (x + (dx < 0 ? 1 : n - 1)) % n); };
+  return (
+    <div className="av-promo" style={grad(a, b)} onTouchStart={onTS} onTouchEnd={onTE}>
+      <div className="blob" /><div className="blob2" />
+      <div key={idx} className="av-anim" style={{ position: "relative" }}>
+        <div className="eyebrow">{s.eyebrow}</div>
+        <div className="big">{s.title}</div>
+        {s.sub && <div className="sub">{s.sub}</div>}
+      </div>
+      {n > 1 && <div className="av-dots">{slides.map((_, k) => <span key={k} className={"av-dot" + (k === idx ? " on" : "")} onClick={() => setI(k)} />)}</div>}
+    </div>
+  );
 }
 function Home({ store, products, favs, toggleFav, open, goSearch }) {
   const featured = products.filter((p) => p.featured);
@@ -840,11 +868,8 @@ function SellerShowcase({ store, products, onUpdateStore, onToggle, onSetOffer, 
   const previewProducts = products.filter((p) => p.active).filter((p) => cat === "Todos" || p.category === cat);
   return (
     <div className="av-anim av-pad">
-      <div className="av-shead" style={{ paddingBottom: 8 }}><h3 style={{ fontSize: 16 }}>Banner promocional</h3></div>
-      <div className="av-field"><label>Texto pequeño</label><input className="av-input" value={store.promo.eyebrow} onChange={(e) => setPromo("eyebrow", e.target.value)} /></div>
-      <div className="av-field"><label>Título</label><input className="av-input" value={store.promo.title} onChange={(e) => setPromo("title", e.target.value)} /></div>
-      <div className="av-field"><label>Subtítulo</label><input className="av-input" value={store.promo.sub} onChange={(e) => setPromo("sub", e.target.value)} /></div>
       <div className="av-shead" style={{ paddingBottom: 8 }}><h3 style={{ fontSize: 16 }}>Así lo ve tu cliente</h3></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: -4, marginBottom: 8 }}>El carrusel de ofertas ahora se edita en la pestaña <b>Marca</b>.</p>
       <div className="av-chips" style={{ paddingTop: 0 }}>{cats.map((c) => <button key={c} className={"av-chip" + (cat === c ? " on" : "")} onClick={() => setCat(c)}>{c}</button>)}</div>
       <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className="av-prevscroll"><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
       <div className="av-shead" style={{ paddingBottom: 6 }}><h3 style={{ fontSize: 16 }}>Ordenar, destacar y ofertas</h3></div>
@@ -1103,6 +1128,11 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const t = store.theme || {};
   const upT = (k, v) => onUpdateStore({ ...store, theme: { ...t, [k]: v } });
+  const slides = (store.slides && store.slides.length) ? store.slides : [{ eyebrow: store.promo.eyebrow, title: store.promo.title, sub: store.promo.sub }];
+  const setSlides = (arr) => onUpdateStore({ ...store, slides: arr });
+  const upSlide = (idx, k, v) => setSlides(slides.map((s, i) => (i === idx ? { ...s, [k]: v } : s)));
+  const addSlide = () => setSlides([...slides, { eyebrow: "Novedad", title: "Nuevo banner", sub: "" }]);
+  const delSlide = (idx) => setSlides(slides.filter((_, i) => i !== idx));
   const LOGO_GRADS = [["#3B2BFF", "#7A4DFF"], ["#F0392B", "#FF7A59"], ["#15A34A", "#7AD67A"], ["#FFB400", "#FF7A00"], ["#1C1C22", "#43434F"], ["#0EA5E9", "#6366F1"]];
   const LOGO_EMOJIS = ["🛍️", "🎮", "📦", "👕", "🧢", "👟", "🎧", "💄", "🍰", "🌿"];
   const onLogo = async (e) => {
@@ -1161,8 +1191,23 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
           <div className="av-themerow"><span>Redondeo de esquinas</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="32" step="1" value={t.cardRadius ?? 18} onChange={(e) => upT("cardRadius", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardRadius ?? 18}px</span></div></div>
           <div className="av-themerow" style={{ borderBottom: 0 }}><span>Sombra</span><button className={"av-toggle" + ((t.cardShadow ?? true) ? " on" : "")} onClick={() => upT("cardShadow", !(t.cardShadow ?? true))}><span className="kn" /></button></div>
         </div>
-        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Estos estilos se aplican a todas las tarjetas de la tienda. Cambia a la vista <b>Comprador</b> para verlos.</p>
       </div>
+      <div style={{ height: 1, background: "var(--line)", margin: "6px 0 16px" }} />
+      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Carrusel de ofertas</div>
+      <p className="av-hint" style={{ textAlign: "left", marginBottom: 12 }}>Banners que rotan en la portada de tu tienda. Agrega varios para que vayan cambiando solos.</p>
+      {slides.map((sl, i) => (
+        <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 12, marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div className="av-promo" style={{ ...grad(sl.a || store.logoA, sl.b || store.logoB), margin: 0, padding: 12, borderRadius: 12, minWidth: 0, flex: 1 }}><div style={{ position: "relative" }}><div className="eyebrow" style={{ fontSize: 9 }}>{sl.eyebrow || " "}</div><div className="big" style={{ fontSize: 15 }}>{sl.title || " "}</div></div></div>
+            {slides.length > 1 && <button className="av-btn ghost" style={{ flex: "none", marginLeft: 8, padding: "8px 12px", fontSize: 12 }} onClick={() => delSlide(i)}>Quitar</button>}
+          </div>
+          <div className="av-field" style={{ paddingBottom: 8 }}><label>Texto pequeño</label><input className="av-input" value={sl.eyebrow || ""} onChange={(e) => upSlide(i, "eyebrow", e.target.value)} placeholder="OFERTAS" /></div>
+          <div className="av-field" style={{ paddingBottom: 8 }}><label>Título</label><input className="av-input" value={sl.title || ""} onChange={(e) => upSlide(i, "title", e.target.value)} placeholder="Bienvenido" /></div>
+          <div className="av-field" style={{ paddingBottom: 8 }}><label>Subtítulo (opcional)</label><input className="av-input" value={sl.sub || ""} onChange={(e) => upSlide(i, "sub", e.target.value)} placeholder="Hasta 30% de descuento" /></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>Colores:</span><input type="color" className="av-colorpick" value={sl.a || store.logoA} onChange={(e) => upSlide(i, "a", e.target.value)} /><input type="color" className="av-colorpick" value={sl.b || store.logoB} onChange={(e) => upSlide(i, "b", e.target.value)} /></div>
+        </div>
+      ))}
+      <button className="av-btn dark block" onClick={addSlide}>{I.plus()} Agregar banner</button>
     </div>
   );
 }

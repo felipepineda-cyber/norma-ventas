@@ -33,10 +33,6 @@ export async function createMyStore(name) {
     owner_id: session.user.id,
     name: name && name.trim() ? name.trim() : "Mi Tienda",
     emoji: "🛍️",
-    sii: false,
-    whatsapp: "",
-    bank: {},
-    theme: {},
   }).select().single();
   if (error) throw error;
   return data;
