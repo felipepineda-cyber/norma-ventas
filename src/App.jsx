@@ -7,7 +7,7 @@ import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
   getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
-  createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, getComprobanteUrl, upsertStore, uploadStoreLogo,
+  createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, crearPagoMP, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
 
 /* ------------------------------ Estilos ----------------------------- */
@@ -330,8 +330,8 @@ const POOL = [
   { name: "Matías O.", r: 5, t: "Excelente. El vendedor confirmó la transferencia al toque por WhatsApp." },
   { name: "Fernanda L.", r: 4, t: "Muy bueno en general, solo demoró un día más de lo esperado el despacho." },
 ];
-const STATUSES = ["Pago en revisión", "Pago en efectivo", "Pago confirmado", "Preparando", "Enviado"];
-const STATUS_COLOR = { "Pago en revisión": { bg: "#FFF6E5", c: "#B45309" }, "Pago en efectivo": { bg: "#E9F7EF", c: "#15803D" }, "Pago confirmado": { bg: "#E9F0FF", c: "#3B2BFF" }, Preparando: { bg: "#F3EAFF", c: "#7C3AED" }, Enviado: { bg: "#EAF7EE", c: "#15A34A" } };
+const STATUSES = ["Pago pendiente", "Pago en revisión", "Pago en efectivo", "Pago confirmado", "Pago rechazado", "Preparando", "Enviado"];
+const STATUS_COLOR = { "Pago pendiente": { bg: "#FFF6E5", c: "#B45309" }, "Pago en revisión": { bg: "#FFF6E5", c: "#B45309" }, "Pago en efectivo": { bg: "#E9F7EF", c: "#15803D" }, "Pago confirmado": { bg: "#E9F0FF", c: "#3B2BFF" }, "Pago rechazado": { bg: "#FDECEC", c: "#C0392B" }, Preparando: { bg: "#F3EAFF", c: "#7C3AED" }, Enviado: { bg: "#EAF7EE", c: "#15A34A" } };
 const OFFER_OPTS = [0, 10, 15, 20, 25, 30, 40];
 const EMOJIS = ["🎧", "🖱️", "⌨️", "🎙️", "📷", "🟪", "👕", "🧢", "👟", "🎒"];
 const COLOR_PRESETS = [{ name: "Negro", hex: "#1C1C22" }, { name: "Blanco", hex: "#F2F2F2" }, { name: "Rosa", hex: "#F5A9C8" }, { name: "Azul", hex: "#3B6EF5" }, { name: "Rojo", hex: "#E5484D" }, { name: "Verde", hex: "#2FA84F" }, { name: "Gris", hex: "#9AA0A6" }, { name: "Beige", hex: "#E4D5B7" }];
@@ -739,6 +739,13 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 1600); };
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("pago");
+    if (!p) return;
+    const msg = p === "ok" ? "¡Pago recibido! Te confirmaremos por WhatsApp." : p === "pendiente" ? "Pago en proceso. Te avisaremos al confirmarse." : "El pago no se completó. Puedes intentarlo otra vez.";
+    setToast(msg); setTimeout(() => setToast(null), 4000);
+    const u = new URL(window.location.href); u.searchParams.delete("pago"); window.history.replaceState({}, "", u);
+  }, []);
   const toggleFav = (id) => setFavs((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
   const addToCart = (product, variant, qty) => {
     const key = `${product.id}-${variant.color}-${variant.size}`;
@@ -749,6 +756,14 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const keepShopping = () => setAdded(null);
   const placeOrder = async (buyer, comp, paymentMethod) => {
     const order = await onCreateOrder({ buyer, cart, total: cartTotal, comprobanteFile: comp?.file, paymentMethod });
+    if (paymentMethod === "mercadopago") {
+      const items = cart.map((i) => ({ title: i.name + (i.size && i.size !== "Única" ? " " + i.size : "") + " (" + i.color + ")", quantity: i.qty, unit_price: i.price }));
+      const pago = await crearPagoMP({ items, orderId: order.id, orderCode: order.code, payerName: buyer.name });
+      const url = pago.init_point || pago.sandbox_init_point;
+      if (!url) throw new Error("No se pudo iniciar el pago con Mercado Pago.");
+      window.location.href = url;
+      return;
+    }
     setLastOrder({ id: order.code, items: cart, total: cartTotal, method: paymentMethod });
     setCart([]); setFlow("done");
   };
@@ -939,18 +954,21 @@ function Checkout({ store, total, onBack, onPlace, showToast }) {
   const [method, setMethod] = useState("transferencia");
   const copy = (k, v) => { if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); setCopied(k); showToast("Copiado"); setTimeout(() => setCopied(null), 1400); };
   const onFile = (e) => { const f = e.target.files?.[0]; if (!f) return; setComp({ name: f.name, url: f.type.startsWith("image/") ? URL.createObjectURL(f) : null, file: f }); };
-  const ready = name.trim() && phone.trim() && (method === "efectivo" || comp) && !sending;
+  const ready = name.trim() && phone.trim() && (method !== "transferencia" || comp) && !sending;
   const b = store.bank || {};
   const rows = [["Banco", b.banco], ["Tipo de cuenta", b.tipo], ["N° de cuenta", b.numero], ["RUT", b.rut], ["Titular", b.titular], ["Correo", b.correo]].filter(([, v]) => v);
   const submit = async () => { setSending(true); try { await onPlace({ name, phone }, comp, method); } catch (e) { alert(e.message); setSending(false); } };
+  const title = method === "efectivo" ? "Pagar en efectivo" : method === "mercadopago" ? "Pagar con Mercado Pago" : "Pagar por transferencia";
+  const mpOn = !!(store.theme && store.theme.mp);
   return (
     <div className="av-anim av-pad">
-      <div className="av-pagehead"><button className="av-back" style={{ position: "static" }} onClick={onBack}>{I.back()}</button><span className="av-pagetitle">{method === "efectivo" ? "Pagar en efectivo" : "Pagar por transferencia"}</span></div>
+      <div className="av-pagehead"><button className="av-back" style={{ position: "static" }} onClick={onBack}>{I.back()}</button><span className="av-pagetitle">{title}</span></div>
       <div className="av-summary" style={{ paddingBottom: 4 }}><div className="av-srow total" style={{ borderTop: 0, marginTop: 0, paddingTop: 0 }}><span>Total a pagar</span><span>{CLP(total)}</span></div></div>
       <div className="av-vlabel" style={{ margin: "6px 18px 0" }}>Método de pago</div>
       <div className="av-paypick">
         <button className={"av-paybtn" + (method === "transferencia" ? " on" : "")} onClick={() => setMethod("transferencia")}><span className="ic">🏦</span>Transferencia</button>
         <button className={"av-paybtn" + (method === "efectivo" ? " on" : "")} onClick={() => setMethod("efectivo")}><span className="ic">💵</span>Efectivo</button>
+        {mpOn && <button className={"av-paybtn" + (method === "mercadopago" ? " on" : "")} onClick={() => setMethod("mercadopago")}><span className="ic">💳</span>Mercado Pago</button>}
       </div>
       {method === "transferencia" && (
       <div className="av-bank"><div className="av-bankhead">{I.shield({ width: 14, height: 14 })} Datos para la transferencia</div>{rows.length === 0 ? <div style={{ padding: 14, fontSize: 13, color: "var(--muted)" }}>El vendedor aún no cargó sus datos bancarios.</div> : rows.map(([k, v]) => (<div key={k} className="av-bankrow"><span className="k">{k}</span><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="v">{v}</span><button className={"av-copy" + (copied === k ? " done" : "")} onClick={() => copy(k, v)}>{copied === k ? I.check({ width: 12, height: 12 }) : I.copy()}</button></span></div>))}</div>
@@ -959,12 +977,14 @@ function Checkout({ store, total, onBack, onPlace, showToast }) {
       <div className="av-field"><label>Tu WhatsApp</label><input className="av-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+56 9 ..." /></div>
       {method === "transferencia" ? (
       <label className={"av-upload" + (comp ? " has" : "")}><input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={onFile} />{comp ? (<>{comp.url ? <img src={comp.url} className="av-upimg" alt="comprobante" /> : I.check({ width: 26, height: 26 })}<div style={{ fontSize: 13, fontWeight: 600, color: "var(--ok)" }}>Comprobante adjunto</div><div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{comp.name} · tocar para cambiar</div></>) : (<><div style={{ color: "var(--accent)", marginBottom: 6 }}>{I.up()}</div><div style={{ fontSize: 13, fontWeight: 600 }}>Adjuntar comprobante</div><div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Foto o PDF de tu transferencia</div></>)}</label>
+      ) : method === "mercadopago" ? (
+      <div className="av-cashbox"><span style={{ color: "var(--accent)", flex: "none" }}>{I.lock({ width: 18, height: 18 })}</span><div>Pagarás <b>{CLP(total)}</b> de forma segura en Mercado Pago (tarjeta de crédito, débito o saldo). Al confirmar, te llevamos al pago y luego vuelves a la tienda.</div></div>
       ) : (
       <div className="av-cashbox"><span style={{ color: "var(--ok)", flex: "none" }}>{I.check({ width: 18, height: 18 })}</span><div>Pagarás <b>{CLP(total)}</b> en efectivo al momento de recibir tu pedido. {store.name} coordinará contigo la entrega por WhatsApp.</div></div>
       )}
       <div style={{ height: 8 }} />
       <p className="av-hint" style={{ textAlign: "center", margin: "0 18px 2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>{I.lock({ width: 12, height: 12 })} Tus datos no se publican. {store.name} coordina contigo por WhatsApp.</p>
-      <div className="av-bottombar"><button className="av-btn primary block" disabled={!ready} onClick={submit}>{sending ? "Enviando…" : ready ? "Confirmar pedido" : "Completa los datos"}</button></div>
+      <div className="av-bottombar"><button className="av-btn primary block" disabled={!ready} onClick={submit}>{sending ? "Procesando…" : !ready ? "Completa los datos" : method === "mercadopago" ? "Pagar con Mercado Pago" : "Confirmar pedido"}</button></div>
     </div>
   );
 }
@@ -1483,6 +1503,26 @@ function SellerNotify({ store }) {
   );
 }
 
+function SellerPayments({ store, onUpdateStore }) {
+  const t = store.theme || {};
+  const on = !!t.mp;
+  const toggle = () => onUpdateStore({ ...store, theme: { ...t, mp: !on } });
+  return (
+    <div className="av-field" style={{ paddingTop: 4 }}>
+      <label>Pagos con Mercado Pago</label>
+      <div className="av-srow2" style={{ borderTop: 0 }}>
+        <div style={{ fontSize: 20 }}>💳</div>
+        <div style={{ flex: 1 }}>
+          <div className="av-name">Cobrar con Mercado Pago</div>
+          <div className="av-cat" style={{ marginTop: 2 }}>{on ? "Activado: tus clientes verán el botón de Mercado Pago" : "Desactivado"}</div>
+        </div>
+        <button className={"av-toggle" + (on ? " on" : "")} onClick={toggle}><span className="kn" /></button>
+      </div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Requiere tener tu Access Token de Mercado Pago configurado como secreto en el servidor (Supabase). Mientras no esté, el botón aparece pero no podrá cobrar. Tarjeta, débito o saldo; el dinero llega a tu cuenta de Mercado Pago.</p>
+    </div>
+  );
+}
+
 function SellerSecurity({ store }) {
   const [on, setOn] = useState(bioEnabled());
   const [can, setCan] = useState(false);
@@ -1518,6 +1558,8 @@ function SellerStore({ store, onUpdateStore }) {
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <SellerSecurity store={store} />
+      <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
+      <SellerPayments store={store} onUpdateStore={onUpdateStore} />
       <div style={{ height: 1, background: "var(--line)", margin: "16px 0" }} />
       <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
       <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
