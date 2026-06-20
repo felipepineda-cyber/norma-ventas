@@ -1267,8 +1267,20 @@ function SellerOrders({ orders, onSetStatus, stockLog, onEditOrder, onDeleteOrde
   );
 }
 
+function BrandSection({ id, title, openSet, setOpenSet, children }) {
+  const open = openSet.has(id);
+  const toggle = () => setOpenSet((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <button className="av-acc" onClick={toggle}><div style={{ textAlign: "left" }}><div className="av-accmon">{title}</div></div><span className={"av-accarrow" + (open ? " open" : "")}>▾</span></button>
+      {open && <div style={{ marginTop: 12 }}>{children}</div>}
+    </div>
+  );
+}
+
 function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   const [busy, setBusy] = useState(false);
+  const [openSet, setOpenSet] = useState(() => new Set(["nombre"]));
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const t = store.theme || {};
   const upT = (k, v) => onUpdateStore({ ...store, theme: { ...t, [k]: v } });
@@ -1289,36 +1301,27 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   };
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
-      <div className="av-field"><label>Nombre de la tienda</label><input className="av-input" value={store.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: GamerStock CL" /></div>
-      <div className="av-field"><label>Logo de la tienda</label>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <StoreLogo store={store} size={64} radius={18} fontSize={30} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label className="av-btn dark" style={{ flex: "none", padding: "11px 16px", cursor: "pointer" }}>{busy ? "Subiendo…" : store.logoUrl ? "Cambiar imagen" : "Subir imagen"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={onLogo} /></label>
-            {store.logoUrl && <button className="av-btn ghost" style={{ flex: "none", padding: "9px 16px" }} onClick={() => up("logoUrl", null)}>Quitar imagen</button>}
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Toca cada sección para desplegarla.</p>
+
+      <BrandSection id="nombre" title="Nombre y logo" openSet={openSet} setOpenSet={setOpenSet}>
+        <div className="av-field"><label>Nombre de la tienda</label><input className="av-input" value={store.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: GamerStock CL" /></div>
+        <div className="av-field"><label>Logo de la tienda</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <StoreLogo store={store} size={64} radius={18} fontSize={30} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label className="av-btn dark" style={{ flex: "none", padding: "11px 16px", cursor: "pointer" }}>{busy ? "Subiendo…" : store.logoUrl ? "Cambiar imagen" : "Subir imagen"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={onLogo} /></label>
+              {store.logoUrl && <button className="av-btn ghost" style={{ flex: "none", padding: "9px 16px" }} onClick={() => up("logoUrl", null)}>Quitar imagen</button>}
+            </div>
           </div>
+          <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Usa una imagen cuadrada (PNG o JPG). Si no subes ninguna, se usa el color e ícono de abajo.</p>
         </div>
-        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Usa una imagen cuadrada (PNG o JPG). Si no subes ninguna, se usa el color e ícono de abajo.</p>
-      </div>
-      {!store.logoUrl && (<>
-        <div className="av-field"><label>Color del logo</label><div className="av-presets">{LOGO_GRADS.map(([a, b]) => <span key={a} className={"av-presetdot" + (store.logoA === a ? " " : "")} style={{ ...grad(a, b), boxShadow: store.logoA === a ? "0 0 0 2px var(--accent)" : undefined }} onClick={() => onUpdateStore({ ...store, logoA: a, logoB: b })} />)}</div></div>
-        <div className="av-field"><label>Ícono del logo</label><div className="av-emojirow">{LOGO_EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (store.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
-      </>)}
+        {!store.logoUrl && (<>
+          <div className="av-field"><label>Color del logo</label><div className="av-presets">{LOGO_GRADS.map(([a, b]) => <span key={a} className={"av-presetdot" + (store.logoA === a ? " " : "")} style={{ ...grad(a, b), boxShadow: store.logoA === a ? "0 0 0 2px var(--accent)" : undefined }} onClick={() => onUpdateStore({ ...store, logoA: a, logoB: b })} />)}</div></div>
+          <div className="av-field"><label>Ícono del logo</label><div className="av-emojirow">{LOGO_EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (store.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
+        </>)}
+      </BrandSection>
 
-      <div style={{ height: 1, background: "var(--line)", margin: "6px 0 16px" }} />
-      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Apariencia de la tienda</div>
-
-      <div className="av-field"><label>Estilo de la tienda y el panel</label>
-        <div className="av-stylegrid">
-          {[["clasico", "Clásico", "Limpio y blanco"], ["glass", "Vidrio (iOS)", "Translúcido claro"], ["glassdark", "Vidrio oscuro", "Translúcido oscuro"], ["minimal", "Minimal", "Plano y elegante"]].map(([v, l, d]) => {
-            const cur = (t.style && t.style !== "clasico") ? t.style : (t.glass ? "glass" : "clasico");
-            return <button key={v} className={"av-stylecard" + (cur === v ? " on" : "")} onClick={() => onUpdateStore({ ...store, theme: { ...t, style: v, glass: v === "glass" } })}><span className="av-stylename">{l}</span><span className="av-styledesc">{d}</span></button>;
-          })}
-        </div>
-        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>El estilo se aplica a la tienda y al panel. Elige un color de fondo para que los estilos de vidrio luzcan.</p>
-      </div>
-
-      <div className="av-field"><label>Encabezado (logo y título)</label>
+      <BrandSection id="encabezado" title="Encabezado (logo y título)" openSet={openSet} setOpenSet={setOpenSet}>
         <div className="av-themebox">
           <div className="av-themerow"><span>Tamaño del logo</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="28" max="80" step="2" value={hc.logoSize} onChange={(e) => upH("logoSize", Number(e.target.value))} /><span style={{ width: 38, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{hc.logoSize}px</span></div></div>
           <div className="av-themerow"><span>Tamaño del título</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="13" max="34" step="1" value={hc.titleSize} onChange={(e) => upH("titleSize", Number(e.target.value))} /><span style={{ width: 38, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{hc.titleSize}px</span></div></div>
@@ -1326,49 +1329,58 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
           <div className="av-themerow" style={{ borderBottom: 0 }}><span>Posición</span><div style={{ display: "flex", gap: 6 }}>{[["left", "Izquierda"], ["center", "Centrado"]].map(([v, l]) => <button key={v} className={"av-stylecard" + (hc.align === v ? " on" : "")} style={{ padding: "6px 12px" }} onClick={() => upH("align", v)}><span className="av-stylename" style={{ fontSize: 12 }}>{l}</span></button>)}</div></div>
         </div>
         <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Cambia cómo se ve el logo y el nombre arriba, en la tienda y en el panel.</p>
-      </div>
+      </BrandSection>
 
-      <div className="av-field"><label>Color de fondo de la tienda</label>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <input type="color" className="av-colorpick" value={t.bg || "#FFFFFF"} onChange={(e) => upT("bg", e.target.value)} />
-          <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{(t.bg || "#FFFFFF").toUpperCase()}</span>
-          <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("bg", "#FFFFFF")}>Restablecer</button>
-        </div>
-      </div>
-
-      <div className="av-field"><label>Color de letra</label>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <input type="color" className="av-colorpick" value={t.ink || "#000000"} onChange={(e) => upT("ink", e.target.value)} />
-          <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{t.ink ? t.ink.toUpperCase() : "Automático"}</span>
-          <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("ink", null)}>Por defecto</button>
-        </div>
-        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Recomendado: <b>negro</b> (#000000) para máxima legibilidad, sobre todo con el estilo vidrio. “Por defecto” vuelve al gris original.</p>
-      </div>
-
-      <div className="av-field"><label>Borde de las tarjetas de producto</label>
-        <div className="av-themebox">
-          <div className="av-themerow"><span>Color del borde</span><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{(t.cardBorderColor || "#ECECF2").toUpperCase()}</span><input type="color" className="av-colorpick" value={t.cardBorderColor || "#ECECF2"} onChange={(e) => upT("cardBorderColor", e.target.value)} /></div></div>
-          <div className="av-themerow"><span>Grosor del borde</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="6" step="1" value={t.cardBorderWidth ?? 1} onChange={(e) => upT("cardBorderWidth", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardBorderWidth ?? 1}px</span></div></div>
-          <div className="av-themerow"><span>Redondeo de esquinas</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="32" step="1" value={t.cardRadius ?? 18} onChange={(e) => upT("cardRadius", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardRadius ?? 18}px</span></div></div>
-          <div className="av-themerow" style={{ borderBottom: 0 }}><span>Sombra</span><button className={"av-toggle" + ((t.cardShadow ?? true) ? " on" : "")} onClick={() => upT("cardShadow", !(t.cardShadow ?? true))}><span className="kn" /></button></div>
-        </div>
-      </div>
-      <div style={{ height: 1, background: "var(--line)", margin: "6px 0 16px" }} />
-      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Carrusel de ofertas</div>
-      <p className="av-hint" style={{ textAlign: "left", marginBottom: 12 }}>Banners que rotan en la portada de tu tienda. Agrega varios para que vayan cambiando solos.</p>
-      {slides.map((sl, i) => (
-        <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 12, marginBottom: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div className="av-promo" style={{ ...grad(sl.a || store.logoA, sl.b || store.logoB), margin: 0, padding: 12, borderRadius: 12, minWidth: 0, flex: 1 }}><div style={{ position: "relative" }}><div className="eyebrow" style={{ fontSize: 9 }}>{sl.eyebrow || " "}</div><div className="big" style={{ fontSize: 15 }}>{sl.title || " "}</div></div></div>
-            {slides.length > 1 && <button className="av-btn ghost" style={{ flex: "none", marginLeft: 8, padding: "8px 12px", fontSize: 12 }} onClick={() => delSlide(i)}>Quitar</button>}
+      <BrandSection id="apariencia" title="Apariencia de la tienda" openSet={openSet} setOpenSet={setOpenSet}>
+        <div className="av-field"><label>Estilo de la tienda y el panel</label>
+          <div className="av-stylegrid">
+            {[["clasico", "Clásico", "Limpio y blanco"], ["glass", "Vidrio (iOS)", "Translúcido claro"], ["glassdark", "Vidrio oscuro", "Translúcido oscuro"], ["minimal", "Minimal", "Plano y elegante"]].map(([v, l, d]) => {
+              const cur = (t.style && t.style !== "clasico") ? t.style : (t.glass ? "glass" : "clasico");
+              return <button key={v} className={"av-stylecard" + (cur === v ? " on" : "")} onClick={() => onUpdateStore({ ...store, theme: { ...t, style: v, glass: v === "glass" } })}><span className="av-stylename">{l}</span><span className="av-styledesc">{d}</span></button>;
+            })}
           </div>
-          <div className="av-field" style={{ paddingBottom: 8 }}><label>Texto pequeño</label><input className="av-input" value={sl.eyebrow || ""} onChange={(e) => upSlide(i, "eyebrow", e.target.value)} placeholder="OFERTAS" /></div>
-          <div className="av-field" style={{ paddingBottom: 8 }}><label>Título</label><input className="av-input" value={sl.title || ""} onChange={(e) => upSlide(i, "title", e.target.value)} placeholder="Bienvenido" /></div>
-          <div className="av-field" style={{ paddingBottom: 8 }}><label>Subtítulo (opcional)</label><input className="av-input" value={sl.sub || ""} onChange={(e) => upSlide(i, "sub", e.target.value)} placeholder="Hasta 30% de descuento" /></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>Colores:</span><input type="color" className="av-colorpick" value={sl.a || store.logoA} onChange={(e) => upSlide(i, "a", e.target.value)} /><input type="color" className="av-colorpick" value={sl.b || store.logoB} onChange={(e) => upSlide(i, "b", e.target.value)} /></div>
         </div>
-      ))}
-      <button className="av-btn dark block" onClick={addSlide}>{I.plus()} Agregar banner</button>
+        <div className="av-field"><label>Color de fondo de la tienda</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <input type="color" className="av-colorpick" value={t.bg || "#FFFFFF"} onChange={(e) => upT("bg", e.target.value)} />
+            <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{(t.bg || "#FFFFFF").toUpperCase()}</span>
+            <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("bg", "#FFFFFF")}>Restablecer</button>
+          </div>
+        </div>
+        <div className="av-field"><label>Color de letra</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <input type="color" className="av-colorpick" value={t.ink || "#000000"} onChange={(e) => upT("ink", e.target.value)} />
+            <span style={{ fontSize: 13, color: "var(--ink2)", fontFamily: "'Space Grotesk',sans-serif" }}>{t.ink ? t.ink.toUpperCase() : "Automático"}</span>
+            <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("ink", null)}>Por defecto</button>
+          </div>
+          <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Recomendado: <b>negro</b> (#000000) para máxima legibilidad, sobre todo con el estilo vidrio. “Por defecto” vuelve al gris original.</p>
+        </div>
+        <div className="av-field"><label>Borde de las tarjetas de producto</label>
+          <div className="av-themebox">
+            <div className="av-themerow"><span>Color del borde</span><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{(t.cardBorderColor || "#ECECF2").toUpperCase()}</span><input type="color" className="av-colorpick" value={t.cardBorderColor || "#ECECF2"} onChange={(e) => upT("cardBorderColor", e.target.value)} /></div></div>
+            <div className="av-themerow"><span>Grosor del borde</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="6" step="1" value={t.cardBorderWidth ?? 1} onChange={(e) => upT("cardBorderWidth", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardBorderWidth ?? 1}px</span></div></div>
+            <div className="av-themerow"><span>Redondeo de esquinas</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="32" step="1" value={t.cardRadius ?? 18} onChange={(e) => upT("cardRadius", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardRadius ?? 18}px</span></div></div>
+            <div className="av-themerow" style={{ borderBottom: 0 }}><span>Sombra</span><button className={"av-toggle" + ((t.cardShadow ?? true) ? " on" : "")} onClick={() => upT("cardShadow", !(t.cardShadow ?? true))}><span className="kn" /></button></div>
+          </div>
+        </div>
+      </BrandSection>
+
+      <BrandSection id="carrusel" title="Carrusel de ofertas" openSet={openSet} setOpenSet={setOpenSet}>
+        <p className="av-hint" style={{ textAlign: "left", marginBottom: 12 }}>Banners que rotan en la portada de tu tienda. Agrega varios para que vayan cambiando solos.</p>
+        {slides.map((sl, i) => (
+          <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 12, marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div className="av-promo" style={{ ...grad(sl.a || store.logoA, sl.b || store.logoB), margin: 0, padding: 12, borderRadius: 12, minWidth: 0, flex: 1 }}><div style={{ position: "relative" }}><div className="eyebrow" style={{ fontSize: 9 }}>{sl.eyebrow || " "}</div><div className="big" style={{ fontSize: 15 }}>{sl.title || " "}</div></div></div>
+              {slides.length > 1 && <button className="av-btn ghost" style={{ flex: "none", marginLeft: 8, padding: "8px 12px", fontSize: 12 }} onClick={() => delSlide(i)}>Quitar</button>}
+            </div>
+            <div className="av-field" style={{ paddingBottom: 8 }}><label>Texto pequeño</label><input className="av-input" value={sl.eyebrow || ""} onChange={(e) => upSlide(i, "eyebrow", e.target.value)} placeholder="OFERTAS" /></div>
+            <div className="av-field" style={{ paddingBottom: 8 }}><label>Título</label><input className="av-input" value={sl.title || ""} onChange={(e) => upSlide(i, "title", e.target.value)} placeholder="Bienvenido" /></div>
+            <div className="av-field" style={{ paddingBottom: 8 }}><label>Subtítulo (opcional)</label><input className="av-input" value={sl.sub || ""} onChange={(e) => upSlide(i, "sub", e.target.value)} placeholder="Hasta 30% de descuento" /></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>Colores:</span><input type="color" className="av-colorpick" value={sl.a || store.logoA} onChange={(e) => upSlide(i, "a", e.target.value)} /><input type="color" className="av-colorpick" value={sl.b || store.logoB} onChange={(e) => upSlide(i, "b", e.target.value)} /></div>
+          </div>
+        ))}
+        <button className="av-btn dark block" onClick={addSlide}>{I.plus()} Agregar banner</button>
+      </BrandSection>
     </div>
   );
 }
