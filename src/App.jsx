@@ -1031,8 +1031,8 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
       </>}
       <div className="av-top">
         <button className="av-burger" onClick={() => setDrawer(true)} title="Menú">{I.menu({ width: 22, height: 22 })}</button>
-        <div className="av-store" onClick={() => setDrawer(true)} style={{ cursor: "pointer" }}><StoreLogo store={store} size={headerCfg(store).logoSize} radius={Math.round(headerCfg(store).logoSize * 0.3)} fontSize={Math.round(headerCfg(store).logoSize * 0.52)} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: headerCfg(store).titleSize, color: headerCfg(store).titleColor || undefined }}>{store.name}</div><span className="av-sii">Toca para el menú</span></div></div>
-        {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Ver la tienda como comprador">🛍️ Comprador</button>}
+        <div className="av-store" onClick={() => setDrawer(true)} style={{ cursor: "pointer" }}><StoreLogo store={store} size={40} radius={12} fontSize={19} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: 16 }}>{store.name}</div><span className="av-sii" style={{ color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block", maxWidth: "100%" }}>Toca para el menú</span></div></div>
+        {onSwitchMode && <button className="av-modeswitch" onClick={onSwitchMode} title="Ver la tienda como comprador">🛍️ Comprador</button>}
         <button className="av-iconbtn" onClick={handleLogout} title="Salir">{I.lock({ width: 18, height: 18 })}</button>
       </div>
       <div className="av-screen">
