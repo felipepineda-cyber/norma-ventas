@@ -239,6 +239,11 @@ const CSS = `
 .av-draweritem{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:12px;border:0;background:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--ink);text-align:left;width:100%;}
 .av-draweritem:hover{background:var(--soft);}
 .av-draweritem.on{background:var(--accent-soft);color:var(--accent);}
+.av-drawerchev{font-size:16px;color:var(--muted);padding:2px 6px;border-radius:8px;transition:transform .2s ease;}
+.av-drawerchev.open{transform:rotate(180deg);}
+.av-drawersubs{display:flex;flex-direction:column;gap:1px;margin:1px 0 4px;}
+.av-drawersub{display:block;text-align:left;width:100%;border:0;background:none;cursor:pointer;font-family:inherit;font-size:13px;color:var(--muted);padding:8px 12px 8px 48px;border-radius:10px;}
+.av-drawersub:hover{background:var(--soft);color:var(--ink2);}
 .av-drawerhead{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:12px 8px 4px;font-weight:700;}
 .av-pagetitle2{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;color:var(--ink);margin-bottom:14px;}
 .av-tabbar::-webkit-scrollbar{display:none;}
@@ -1013,10 +1018,20 @@ function Done({ store, order, onHome }) {
 function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onEditOrder, onDeleteOrder }) {
   const [tab, setTab] = useState("productos");
   const [drawer, setDrawer] = useState(false);
+  const [exp, setExp] = useState(() => new Set());
   const handleLogout = async () => { await signOut(); onLogout(); };
   const go = (k) => { setTab(k); setDrawer(false); };
+  const toggleExp = (k) => setExp((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
   const tabs = [["productos", "Productos"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`]];
-  const menu = [["vista", "Vista previa", "🖼️"], ["stock", "Stock", "📦"], ["marca", "Marca", "🎨"], ["seguridad", "Seguridad", "🔒"], ["pagos", "Métodos de pago", "💳"], ["datos", "Datos de la tienda", "🏪"], ["avisos", "Avisos por WhatsApp", "💬"]];
+  const menu = [
+    { k: "vista", l: "Vista previa", ic: "🖼️", subs: ["Vista previa del catálogo"] },
+    { k: "stock", l: "Stock", ic: "📦", subs: ["Existencias y cantidades"] },
+    { k: "marca", l: "Marca", ic: "🎨", subs: ["Nombre y logo", "Encabezado", "Apariencia de la tienda", "Dirección web (dominio)", "Carrusel de ofertas"] },
+    { k: "seguridad", l: "Seguridad", ic: "🔒", subs: ["Biometría (Face ID / huella)"] },
+    { k: "pagos", l: "Métodos de pago", ic: "💳", subs: ["Mercado Pago", "Datos bancarios"] },
+    { k: "datos", l: "Datos de la tienda", ic: "🏪", subs: ["Formalización (SII)", "WhatsApp Business"] },
+    { k: "avisos", l: "Avisos por WhatsApp", ic: "💬", subs: ["CallMeBot (número y apikey)", "Mensaje del aviso"] },
+  ];
   return (
     <>
       {drawer && <>
@@ -1024,7 +1039,20 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
         <div className="av-drawer">
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><StoreLogo store={store} size={40} radius={12} fontSize={19} /><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 16 }}>{store.name}</div></div>
           <div className="av-drawerhead">Menú</div>
-          {menu.map(([k, l, ic]) => <button key={k} className={"av-draweritem" + (tab === k ? " on" : "")} onClick={() => go(k)}><span style={{ fontSize: 18, width: 24, textAlign: "center" }}>{ic}</span>{l}</button>)}
+          {menu.map(({ k, l, ic, subs }) => {
+            const multi = subs.length > 1;
+            const open = exp.has(k);
+            return (
+              <div key={k}>
+                <button className={"av-draweritem" + (tab === k ? " on" : "")} onClick={() => go(k)}>
+                  <span style={{ fontSize: 18, width: 24, textAlign: "center" }}>{ic}</span>
+                  <span style={{ flex: 1 }}>{l}</span>
+                  {multi && <span className={"av-drawerchev" + (open ? " open" : "")} onClick={(e) => { e.stopPropagation(); toggleExp(k); }}>▾</span>}
+                </button>
+                {multi && open && <div className="av-drawersubs">{subs.map((s) => <button key={s} className="av-drawersub" onClick={() => go(k)}>{s}</button>)}</div>}
+              </div>
+            );
+          })}
           <div style={{ flex: 1 }} />
           <button className="av-draweritem" onClick={handleLogout}><span style={{ fontSize: 18, width: 24, textAlign: "center" }}>🚪</span>Salir</button>
         </div>
