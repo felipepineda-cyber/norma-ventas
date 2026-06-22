@@ -1485,7 +1485,15 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
         </div>
         <div className="av-field"><label>Dominio propio (opcional)</label>
           <input className="av-input" value={store.domain || ""} onChange={(e) => up("domain", e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ""))} placeholder="mitienda.cl" />
-          <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Si tienes un dominio propio, escríbelo aquí y luego conéctalo en Vercel. Mientras no esté conectado en Vercel apuntando a esta app, no funcionará. (Recuerda: un dominio se paga por año.)</p>
+          <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Si tienes un dominio propio, escríbelo aquí y luego conéctalo en Vercel. Mientras no esté conectado apuntando a esta app, no funcionará. (Un dominio se paga por año.)</p>
+        </div>
+        <div className="av-field" style={{ paddingTop: 0 }}><label>¿No tienes dominio? Cómpralo aquí</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://www.nic.cl" target="_blank" rel="noreferrer">🇨🇱 NIC Chile (.cl)</a>
+            <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://dash.cloudflare.com/?to=/:account/domains/register" target="_blank" rel="noreferrer">🌐 Cloudflare</a>
+            <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://www.namecheap.com/domains/" target="_blank" rel="noreferrer">🛒 Namecheap</a>
+          </div>
+          <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Cómo funciona: <b>1)</b> compras tu dominio en cualquiera de estos sitios (para <b>.cl</b> usa NIC Chile). <b>2)</b> lo conectas en Vercel (Settings → Domains → Add Domain) siguiendo los pasos que te muestra. <b>3)</b> lo escribes arriba. El dominio es tuyo aunque la app esté en Vercel.</p>
         </div>
       </BrandSection>
 
