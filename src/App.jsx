@@ -386,6 +386,16 @@ const I = {
   star: (f) => (p) => (<svg width="13" height="13" viewBox="0 0 24 24" fill={f ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" {...p}><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>),
   back: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m15 18-6-6 6-6"/></svg>),
   menu: (p) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>),
+  eye: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>),
+  box: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>),
+  palette: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.6 0 2-1.4 1-2.4-1-1 1-2.6 2-2.6h2c2.8 0 5-2.2 5-5C22 6 17.5 2 12 2z"/></svg>),
+  card: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg>),
+  store: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 9.5 5.2 4h13.6L20 9.5"/><path d="M4 9.5V20h16V9.5"/><path d="M3.5 9.5h17"/><path d="M9.5 20v-6h5v6"/></svg>),
+  message: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>),
+  logout: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>),
+  user: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>),
+  bank: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 10 9-6 9 6"/><path d="M21 10H3"/><path d="M5 10v9"/><path d="M9 10v9"/><path d="M15 10v9"/><path d="M19 10v9"/><path d="M3 21h18"/></svg>),
+  cash: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4"/><path d="M18 10v4"/></svg>),
   check: (p) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
   shield: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>),
   truck: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>),
@@ -498,7 +508,7 @@ function BioLock({ onUnlock, onLogout }) {
   return (
     <div className="av-root"><style>{CSS}</style>
       <div className="av-empty" style={{ gap: 16, padding: "0 28px" }}>
-        <div style={{ fontSize: 46 }}>🔒</div>
+        <div style={{ color: "var(--accent)" }}>{I.lock({ width: 44, height: 44 })}</div>
         <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 18, color: "var(--ink)" }}>Panel bloqueado</div>
         <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>Verifica tu identidad con Face ID, Touch ID o huella para entrar.</div>
         {err && <div style={{ fontSize: 12, color: "#D33" }}>{err}</div>}
@@ -796,7 +806,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
       <div className="av-top" style={{ justifyContent: headerCfg(store).align === "center" ? "center" : undefined }}>
         <div className="av-store" style={headerCfg(store).align === "center" ? { flex: 1, justifyContent: "center" } : undefined}><StoreLogo store={store} size={headerCfg(store).logoSize} radius={Math.round(headerCfg(store).logoSize * 0.3)} fontSize={Math.round(headerCfg(store).logoSize * 0.52)} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: headerCfg(store).titleSize, color: headerCfg(store).titleColor || undefined }}>{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
         <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
-        {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">🧑‍💼 Vendedor</button>}
+        {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">{I.user({ width: 15, height: 15 })} Vendedor</button>}
         {onSecretAdmin && <button onClick={onSecretAdmin} aria-hidden="true" tabIndex={-1} title="" style={{ position: "absolute", top: 0, right: 0, width: 52, height: 52, opacity: 0, background: "transparent", border: 0, padding: 0, margin: 0, zIndex: 50 }} />}
       </div>
       <div className="av-screen">
@@ -983,9 +993,9 @@ function Checkout({ store, total, onBack, onPlace, showToast }) {
       <div className="av-summary" style={{ paddingBottom: 4 }}><div className="av-srow total" style={{ borderTop: 0, marginTop: 0, paddingTop: 0 }}><span>Total a pagar</span><span>{CLP(total)}</span></div></div>
       <div className="av-vlabel" style={{ margin: "6px 18px 0" }}>Método de pago</div>
       <div className="av-paypick">
-        <button className={"av-paybtn" + (method === "transferencia" ? " on" : "")} onClick={() => setMethod("transferencia")}><span className="ic">🏦</span>Transferencia</button>
-        <button className={"av-paybtn" + (method === "efectivo" ? " on" : "")} onClick={() => setMethod("efectivo")}><span className="ic">💵</span>Efectivo</button>
-        {mpOn && <button className={"av-paybtn" + (method === "mercadopago" ? " on" : "")} onClick={() => setMethod("mercadopago")}><span className="ic">💳</span>Mercado Pago</button>}
+        <button className={"av-paybtn" + (method === "transferencia" ? " on" : "")} onClick={() => setMethod("transferencia")}><span className="ic">{I.bank({ width: 18, height: 18 })}</span>Transferencia</button>
+        <button className={"av-paybtn" + (method === "efectivo" ? " on" : "")} onClick={() => setMethod("efectivo")}><span className="ic">{I.cash({ width: 18, height: 18 })}</span>Efectivo</button>
+        {mpOn && <button className={"av-paybtn" + (method === "mercadopago" ? " on" : "")} onClick={() => setMethod("mercadopago")}><span className="ic">{I.card({ width: 18, height: 18 })}</span>Mercado Pago</button>}
       </div>
       {method === "transferencia" && (
       <div className="av-bank"><div className="av-bankhead">{I.shield({ width: 14, height: 14 })} Datos para la transferencia</div>{rows.length === 0 ? <div style={{ padding: 14, fontSize: 13, color: "var(--muted)" }}>El vendedor aún no cargó sus datos bancarios.</div> : rows.map(([k, v]) => (<div key={k} className="av-bankrow"><span className="k">{k}</span><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="v">{v}</span><button className={"av-copy" + (copied === k ? " done" : "")} onClick={() => copy(k, v)}>{copied === k ? I.check({ width: 12, height: 12 }) : I.copy()}</button></span></div>))}</div>
@@ -1024,13 +1034,13 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
   const toggleExp = (k) => setExp((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
   const tabs = [["productos", "Productos"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`]];
   const menu = [
-    { k: "vista", l: "Vista previa", ic: "🖼️", subs: ["Vista previa del catálogo"] },
-    { k: "stock", l: "Stock", ic: "📦", subs: ["Existencias y cantidades"] },
-    { k: "marca", l: "Marca", ic: "🎨", subs: ["Nombre y logo", "Encabezado", "Apariencia de la tienda", "Dirección web (dominio)", "Carrusel de ofertas"] },
-    { k: "seguridad", l: "Seguridad", ic: "🔒", subs: ["Biometría (Face ID / huella)"] },
-    { k: "pagos", l: "Métodos de pago", ic: "💳", subs: ["Mercado Pago", "Datos bancarios"] },
-    { k: "datos", l: "Datos de la tienda", ic: "🏪", subs: ["Formalización (SII)", "WhatsApp Business"] },
-    { k: "avisos", l: "Avisos por WhatsApp", ic: "💬", subs: ["CallMeBot (número y apikey)", "Mensaje del aviso"] },
+    { k: "vista", l: "Vista previa", ic: "eye", subs: ["Vista previa del catálogo"] },
+    { k: "stock", l: "Stock", ic: "box", subs: ["Existencias y cantidades"] },
+    { k: "marca", l: "Marca", ic: "palette", subs: ["Nombre y logo", "Encabezado", "Apariencia de la tienda", "Carrusel de ofertas"] },
+    { k: "seguridad", l: "Seguridad", ic: "shield", subs: ["Biometría (Face ID / huella)"] },
+    { k: "pagos", l: "Métodos de pago", ic: "card", subs: ["Mercado Pago", "Datos bancarios"] },
+    { k: "datos", l: "Datos de la tienda", ic: "store", subs: ["Formalización (SII)", "WhatsApp Business", "Dirección web (dominio)"] },
+    { k: "avisos", l: "Avisos por WhatsApp", ic: "message", subs: ["CallMeBot (número y apikey)", "Mensaje del aviso"] },
   ];
   return (
     <>
@@ -1045,7 +1055,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
             return (
               <div key={k}>
                 <button className={"av-draweritem" + (tab === k ? " on" : "")} onClick={() => go(k)}>
-                  <span style={{ fontSize: 18, width: 24, textAlign: "center" }}>{ic}</span>
+                  <span style={{ width: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{I[ic]({ width: 19, height: 19 })}</span>
                   <span style={{ flex: 1 }}>{l}</span>
                   {multi && <span className={"av-drawerchev" + (open ? " open" : "")} onClick={(e) => { e.stopPropagation(); toggleExp(k); }}>▾</span>}
                 </button>
@@ -1054,13 +1064,13 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
             );
           })}
           <div style={{ flex: 1 }} />
-          <button className="av-draweritem" onClick={handleLogout}><span style={{ fontSize: 18, width: 24, textAlign: "center" }}>🚪</span>Salir</button>
+          <button className="av-draweritem" onClick={handleLogout}><span style={{ width: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{I.logout({ width: 19, height: 19 })}</span>Salir</button>
         </div>
       </>}
       <div className="av-top">
         <button className="av-burger" onClick={() => setDrawer(true)} title="Menú">{I.menu({ width: 22, height: 22 })}</button>
         <div className="av-store" onClick={() => setDrawer(true)} style={{ cursor: "pointer" }}><StoreLogo store={store} size={40} radius={12} fontSize={19} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: 16 }}>{store.name}</div><span className="av-sii" style={{ color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block", maxWidth: "100%" }}>Toca para el menú</span></div></div>
-        {onSwitchMode && <button className="av-modeswitch" onClick={onSwitchMode} title="Ver la tienda como comprador">🛍️ Comprador</button>}
+        {onSwitchMode && <button className="av-modeswitch" onClick={onSwitchMode} title="Ver la tienda como comprador">{I.bag({ width: 15, height: 15 })} Comprador</button>}
         <button className="av-iconbtn" onClick={handleLogout} title="Salir">{I.lock({ width: 18, height: 18 })}</button>
       </div>
       <div className="av-screen">
@@ -1328,7 +1338,7 @@ function downloadCSV(text, nombre) {
 function OrderCard({ o, onSetStatus }) {
   const sc = STATUS_COLOR[o.status] || STATUS_COLOR["Pago en revisión"];
   return (
-    <div className="av-orderc" style={{ margin: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontFamily: "Space Grotesk", fontWeight: 700 }}>{o.id}</div><span className="av-status" style={{ background: sc.bg, color: sc.c }}>{o.status}</span></div><div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.date} · {o.buyer.name} · {o.buyer.phone}</div><div style={{ marginTop: 6 }}><span className="av-tag" style={{ background: o.method === "efectivo" ? "#E9F7EF" : "var(--accent-soft)", color: o.method === "efectivo" ? "#15803D" : "var(--accent)" }}>{o.method === "efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}</span></div><div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>{o.items.map((i) => <div key={i.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "var(--ink2)" }}>{i.name} {i.size !== "Única" ? "· " + i.size : ""} ({i.color}) ×{i.qty}</span><span style={{ fontWeight: 600 }}>{CLP(i.price * i.qty)}</span></div>)}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 10 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{o.method === "efectivo" ? "Total a cobrar" : "Comprobante"}</span><span className="av-price" style={{ fontSize: 15 }}>{CLP(o.total)}</span></div>{o.comprobante?.url && <a href={o.comprobante.url} target="_blank" rel="noreferrer"><img src={o.comprobante.url} alt="comprobante" style={{ width: "100%", borderRadius: 12, marginTop: 10, maxHeight: 180, objectFit: "cover" }} /></a>}<select className="av-select" value={o.status} onChange={(e) => onSetStatus(o.dbId, e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+    <div className="av-orderc" style={{ margin: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontFamily: "Space Grotesk", fontWeight: 700 }}>{o.id}</div><span className="av-status" style={{ background: sc.bg, color: sc.c }}>{o.status}</span></div><div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.date} · {o.buyer.name} · {o.buyer.phone}</div><div style={{ marginTop: 6 }}><span className="av-tag" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: o.method === "efectivo" ? "#E9F7EF" : "var(--accent-soft)", color: o.method === "efectivo" ? "#15803D" : "var(--accent)" }}>{o.method === "efectivo" ? I.cash({ width: 14, height: 14 }) : I.bank({ width: 14, height: 14 })}{o.method === "efectivo" ? "Efectivo" : "Transferencia"}</span></div><div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 4 }}>{o.items.map((i) => <div key={i.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "var(--ink2)" }}>{i.name} {i.size !== "Única" ? "· " + i.size : ""} ({i.color}) ×{i.qty}</span><span style={{ fontWeight: 600 }}>{CLP(i.price * i.qty)}</span></div>)}</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 10 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{o.method === "efectivo" ? "Total a cobrar" : "Comprobante"}</span><span className="av-price" style={{ fontSize: 15 }}>{CLP(o.total)}</span></div>{o.comprobante?.url && <a href={o.comprobante.url} target="_blank" rel="noreferrer"><img src={o.comprobante.url} alt="comprobante" style={{ width: "100%", borderRadius: 12, marginTop: 10, maxHeight: 180, objectFit: "cover" }} /></a>}<select className="av-select" value={o.status} onChange={(e) => onSetStatus(o.dbId, e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
   );
 }
 
@@ -1504,27 +1514,6 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
         </div>
       </BrandSection>
 
-      <BrandSection id="dominio" title="Dirección web (dominio)" openSet={openSet} setOpenSet={setOpenSet}>
-        <div className="av-field"><label>Nombre corto (para tu enlace gratis)</label>
-          <input className="av-input" value={store.slug || ""} onChange={(e) => up("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40))} placeholder="gamerstock" />
-          {store.slug
-            ? <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Tu enlace gratis para compartir:<br /><b style={{ wordBreak: "break-all" }}>{window.location.origin}/?tienda={store.slug}</b></p>
-            : <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Elige un nombre corto (solo minúsculas, números y guiones) para tener un enlace gratis para compartir.</p>}
-        </div>
-        <div className="av-field"><label>Dominio propio (opcional)</label>
-          <input className="av-input" value={store.domain || ""} onChange={(e) => up("domain", e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ""))} placeholder="mitienda.cl" />
-          <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Si tienes un dominio propio, escríbelo aquí y luego conéctalo en Vercel. Mientras no esté conectado apuntando a esta app, no funcionará. (Un dominio se paga por año.)</p>
-        </div>
-        <div className="av-field" style={{ paddingTop: 0 }}><label>¿No tienes dominio? Cómpralo aquí</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://www.nic.cl" target="_blank" rel="noreferrer">🇨🇱 NIC Chile (.cl)</a>
-            <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://dash.cloudflare.com/?to=/:account/domains/register" target="_blank" rel="noreferrer">🌐 Cloudflare</a>
-            <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://www.namecheap.com/domains/" target="_blank" rel="noreferrer">🛒 Namecheap</a>
-          </div>
-          <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Cómo funciona: <b>1)</b> compras tu dominio en cualquiera de estos sitios (para <b>.cl</b> usa NIC Chile). <b>2)</b> lo conectas en Vercel (Settings → Domains → Add Domain) siguiendo los pasos que te muestra. <b>3)</b> lo escribes arriba. El dominio es tuyo aunque la app esté en Vercel.</p>
-        </div>
-      </BrandSection>
-
       <BrandSection id="carrusel" title="Carrusel de ofertas" openSet={openSet} setOpenSet={setOpenSet}>
         <p className="av-hint" style={{ textAlign: "left", marginBottom: 12 }}>Banners que rotan en la portada de tu tienda. Agrega varios para que vayan cambiando solos.</p>
         {slides.map((sl, i) => (
@@ -1596,7 +1585,7 @@ function SellerPayments({ store, onUpdateStore }) {
     <div className="av-field" style={{ paddingTop: 4 }}>
       <label>Pagos con Mercado Pago</label>
       <div className="av-srow2" style={{ borderTop: 0 }}>
-        <div style={{ fontSize: 20 }}>💳</div>
+        <div style={{ color: "var(--accent)" }}>{I.card({ width: 22, height: 22 })}</div>
         <div style={{ flex: 1 }}>
           <div className="av-name">Cobrar con Mercado Pago</div>
           <div className="av-cat" style={{ marginTop: 2 }}>{on ? "Activado: tus clientes verán el botón de Mercado Pago" : "Desactivado"}</div>
@@ -1666,6 +1655,25 @@ function SellerStore({ store, onUpdateStore, section = "datos" }) {
     <Wrap title="Datos de la tienda">
       <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
       <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
+      <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+      <div className="av-field" style={{ paddingTop: 0 }}><label>Dirección web — nombre corto (enlace gratis)</label>
+        <input className="av-input" value={store.slug || ""} onChange={(e) => up("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40))} placeholder="gamerstock" />
+        {store.slug
+          ? <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Tu enlace gratis para compartir:<br /><b style={{ wordBreak: "break-all" }}>{window.location.origin}/?tienda={store.slug}</b></p>
+          : <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Elige un nombre corto (solo minúsculas, números y guiones) para tener un enlace gratis para compartir.</p>}
+      </div>
+      <div className="av-field"><label>Dominio propio (opcional)</label>
+        <input className="av-input" value={store.domain || ""} onChange={(e) => up("domain", e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ""))} placeholder="mitienda.cl" />
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Si tienes un dominio propio, escríbelo aquí y luego conéctalo en Vercel. Mientras no esté conectado apuntando a esta app, no funcionará. (Un dominio se paga por año.)</p>
+      </div>
+      <div className="av-field" style={{ paddingTop: 0 }}><label>¿No tienes dominio? Cómpralo aquí</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://www.nic.cl" target="_blank" rel="noreferrer">NIC Chile (.cl)</a>
+          <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://dash.cloudflare.com/?to=/:account/domains/register" target="_blank" rel="noreferrer">Cloudflare</a>
+          <a className="av-btn ghost" style={{ flex: "none", padding: "10px 14px", textDecoration: "none" }} href="https://www.namecheap.com/domains/" target="_blank" rel="noreferrer">Namecheap</a>
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Cómo funciona: <b>1)</b> compras tu dominio (para <b>.cl</b> usa NIC Chile). <b>2)</b> lo conectas en Vercel (Settings → Domains → Add Domain). <b>3)</b> lo escribes arriba. El dominio es tuyo aunque la app esté en Vercel.</p>
+      </div>
     </Wrap>
   );
 }
