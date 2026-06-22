@@ -91,6 +91,26 @@ export async function saveStoreNotify(storeId, { phone, apikey, template }) {
   if (error) throw error;
 }
 
+// Credenciales de Mercado Pago de la tienda (privadas, zona segura)
+export async function getStoreMP(storeId) {
+  const { data, error } = await supabase.from("store_mp").select("access_token, public_key").eq("store_id", storeId).maybeSingle();
+  if (error) throw error;
+  return data || { access_token: "", public_key: "" };
+}
+export async function saveStoreMP(storeId, { access_token, public_key }) {
+  const { error } = await supabase.from("store_mp").upsert({ store_id: storeId, access_token: access_token ?? null, public_key: public_key ?? null, updated_at: new Date().toISOString() }, { onConflict: "store_id" });
+  if (error) throw error;
+}
+
+// Verifica la contraseña del usuario actual (para zonas seguras)
+export async function verifyPassword(password) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) throw new Error("No hay sesión activa.");
+  const { error } = await supabase.auth.signInWithPassword({ email: user.email, password });
+  if (error) throw new Error("Contraseña incorrecta.");
+  return true;
+}
+
 // Para el enlace público de comprador (sin login): una tienda por id, o la primera si no se indica id
 export async function getStorePublic(storeId, host) {
   // 1. Por id o slug explícito (?tienda=...)

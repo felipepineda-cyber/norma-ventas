@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
-  getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
+  getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, getStoreMP, saveStoreMP, verifyPassword, listProducts, createProduct, updateProduct, deleteProduct, setOffer,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, crearPagoMP, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -1080,10 +1080,10 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
-        {tab === "seguridad" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="seguridad" />}
-        {tab === "pagos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="pagos" />}
-        {tab === "datos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="datos" />}
-        {tab === "avisos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="avisos" />}
+        {tab === "seguridad" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="seguridad" onGo={go} />}
+        {tab === "pagos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="pagos" onGo={go} />}
+        {tab === "datos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="datos" onGo={go} />}
+        {tab === "avisos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="avisos" onGo={go} />}
       </div>
     </>
   );
@@ -1577,7 +1577,7 @@ function SellerNotify({ store }) {
   );
 }
 
-function SellerPayments({ store, onUpdateStore }) {
+function SellerPayments({ store, onUpdateStore, onGo }) {
   const t = store.theme || {};
   const on = !!t.mp;
   const toggle = () => onUpdateStore({ ...store, theme: { ...t, mp: !on } });
@@ -1592,7 +1592,8 @@ function SellerPayments({ store, onUpdateStore }) {
         </div>
         <button className={"av-toggle" + (on ? " on" : "")} onClick={toggle}><span className="kn" /></button>
       </div>
-      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Requiere tener tu Access Token de Mercado Pago configurado como secreto en el servidor (Supabase). Mientras no esté, el botón aparece pero no podrá cobrar. Tarjeta, débito o saldo; el dinero llega a tu cuenta de Mercado Pago.</p>
+      {onGo && <button className="av-btn dark block" style={{ marginTop: 12 }} onClick={() => onGo("seguridad")}>{I.lock({ width: 16, height: 16 })} Configurar credenciales (zona segura)</button>}
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>El dinero llega a tu cuenta de Mercado Pago. Las credenciales se ingresan en la zona segura (con tu contraseña y biometría).</p>
     </div>
   );
 }
@@ -1625,7 +1626,82 @@ function SellerSecurity({ store }) {
   );
 }
 
-function SellerStore({ store, onUpdateStore, section = "datos" }) {
+function SecureArea({ store, children }) {
+  const [pwOK, setPwOK] = useState(false);
+  const [bioOK, setBioOK] = useState(false);
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const checkPw = async () => {
+    if (!pw) return;
+    setBusy(true); setErr("");
+    try { await verifyPassword(pw); setPwOK(true); setPw(""); }
+    catch (e) { setErr(e.message || "No se pudo verificar."); }
+    finally { setBusy(false); }
+  };
+  const checkBio = async () => {
+    setErr("");
+    try { if (!bioEnabled()) { await bioRegister(store?.name || "vendedor"); } await bioVerify(); setBioOK(true); }
+    catch (e) { setErr(e.message || "No se pudo verificar la biometría."); }
+  };
+  if (pwOK && bioOK) return children;
+  return (
+    <div>
+      <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ color: "var(--accent)" }}>{I.lock({ width: 22, height: 22 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Zona segura</div></div>
+        <p className="av-hint" style={{ textAlign: "left", margin: 0 }}>Para ver o cambiar datos sensibles necesitas dos verificaciones: tu contraseña y tu biometría.</p>
+        <div className="av-field" style={{ paddingBottom: 0 }}>
+          <label>1. Tu contraseña {pwOK ? "✓" : ""}</label>
+          {!pwOK && <div style={{ display: "flex", gap: 8 }}><input className="av-input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" /><button className="av-btn dark" style={{ flex: "none", padding: "0 16px" }} disabled={busy || !pw} onClick={checkPw}>{busy ? "…" : "Verificar"}</button></div>}
+        </div>
+        <div className="av-field" style={{ paddingBottom: 0 }}>
+          <label>2. Biometría {bioOK ? "✓" : ""}</label>
+          {!bioOK && <button className="av-btn primary block" disabled={!pwOK} onClick={checkBio}>{I.lock({ width: 16, height: 16 })} Verificar con Face ID / huella</button>}
+          {!pwOK && <p className="av-hint" style={{ textAlign: "left", marginTop: 6 }}>Primero verifica tu contraseña.</p>}
+        </div>
+        {err && <div style={{ fontSize: 12, color: "#D33" }}>{err}</div>}
+      </div>
+    </div>
+  );
+}
+
+function MPCredentials({ store }) {
+  const [tok, setTok] = useState("");
+  const [pk, setPk] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try { const m = await getStoreMP(store.id); setTok(m.access_token || ""); setPk(m.public_key || ""); } catch { /* noop */ }
+      finally { setLoaded(true); }
+    })();
+  }, [store.id]);
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    try { await saveStoreMP(store.id, { access_token: tok.trim(), public_key: pk.trim() }); setSaved(true); }
+    catch (e) { alert(e.message); }
+    finally { setSaving(false); }
+  };
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><span style={{ color: "var(--accent)" }}>{I.card({ width: 20, height: 20 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Credenciales de Mercado Pago</div></div>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Pega aquí las credenciales de tu cuenta de Mercado Pago (las obtienes en mercadopago.cl/developers → Tus integraciones). El dinero llega a TU cuenta. Empieza con las de prueba.</p>
+      <div className="av-field"><label>Access Token</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="av-input" type={show ? "text" : "password"} value={tok} onChange={(e) => { setTok(e.target.value); setSaved(false); }} placeholder="APP_USR-… o TEST-…" />
+          <button className="av-btn ghost" style={{ flex: "none", padding: "0 14px" }} onClick={() => setShow(!show)}>{show ? "Ocultar" : "Ver"}</button>
+        </div>
+      </div>
+      <div className="av-field"><label>Public Key (opcional)</label><input className="av-input" value={pk} onChange={(e) => { setPk(e.target.value); setSaved(false); }} placeholder="APP_USR-… o TEST-…" /></div>
+      <button className="av-btn primary block" disabled={!loaded || saving} onClick={save}>{saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar credenciales"}</button>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Se guardan de forma privada (solo tu tienda puede verlas). Quedan en el servidor para poder crear los cobros automáticamente.</p>
+    </div>
+  );
+}
+
+function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
   const b = store.bank || {};
@@ -1636,11 +1712,19 @@ function SellerStore({ store, onUpdateStore, section = "datos" }) {
     </div>
   );
 
-  if (section === "seguridad") return <Wrap title="Seguridad"><SellerSecurity store={store} /></Wrap>;
+  if (section === "seguridad") return (
+    <Wrap title="Seguridad">
+      <SecureArea store={store}>
+        <SellerSecurity store={store} />
+        <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+        <MPCredentials store={store} />
+      </SecureArea>
+    </Wrap>
+  );
 
   if (section === "pagos") return (
     <Wrap title="Métodos de pago">
-      <SellerPayments store={store} onUpdateStore={onUpdateStore} />
+      <SellerPayments store={store} onUpdateStore={onUpdateStore} onGo={onGo} />
       <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
       <div className="av-field" style={{ paddingTop: 0 }}><label>Datos bancarios (para transferencia)</label></div>
       {[["banco", "Banco"], ["tipo", "Tipo de cuenta"], ["numero", "N° de cuenta"], ["rut", "RUT"], ["titular", "Titular"], ["correo", "Correo"]].map(([k, l]) => (
