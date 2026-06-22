@@ -92,11 +92,25 @@ export async function saveStoreNotify(storeId, { phone, apikey }) {
 }
 
 // Para el enlace público de comprador (sin login): una tienda por id, o la primera si no se indica id
-export async function getStorePublic(storeId) {
-  let q = supabase.from("stores").select("*");
-  q = storeId ? q.eq("id", storeId) : q.order("created_at", { ascending: true }).limit(1);
-  const { data, error } = await q.maybeSingle();
-  if (error) throw error;
+export async function getStorePublic(storeId, host) {
+  // 1. Por id o slug explícito (?tienda=...)
+  if (storeId) {
+    const { data } = await supabase.from("stores").select("*").eq("id", storeId).maybeSingle();
+    if (data) return data;
+    try { const { data: bs } = await supabase.from("stores").select("*").eq("slug", storeId).maybeSingle(); if (bs) return bs; } catch (_) {}
+  }
+  // 2. Por dominio o subdominio (cuando se entra por un dominio propio)
+  const h = (host || "").toLowerCase().replace(/^www\./, "");
+  const isPlatform = !h || h === "localhost" || h.endsWith(".vercel.app") || h.endsWith("127.0.0.1");
+  if (!isPlatform) {
+    try { const { data: bd } = await supabase.from("stores").select("*").eq("domain", h).maybeSingle(); if (bd) return bd; } catch (_) {}
+    const parts = h.split(".");
+    if (parts.length >= 3) {
+      try { const { data: bsub } = await supabase.from("stores").select("*").eq("slug", parts[0]).maybeSingle(); if (bsub) return bsub; } catch (_) {}
+    }
+  }
+  // 3. Respaldo: la tienda más antigua
+  const { data } = await supabase.from("stores").select("*").order("created_at", { ascending: true }).limit(1).maybeSingle();
   return data;
 }
 

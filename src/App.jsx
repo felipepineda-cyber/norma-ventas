@@ -358,6 +358,7 @@ function mapStore(row) {
     promo: { eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" },
     slides: Array.isArray(row.slides) && row.slides.length ? row.slides : [{ eyebrow: row.promo_eyebrow || "Ofertas", title: row.promo_title || "Bienvenido", sub: row.promo_sub || "" }],
     bank: row.bank || {},
+    slug: row.slug || "", domain: row.domain || "",
   };
 }
 
@@ -432,7 +433,7 @@ export default function App() {
   const isAdmin = path === "/panel" || path.startsWith("/panel/") || path === "/admin" || path.startsWith("/admin/") || sp.has("admin") || sp.has("panel");
   const publicStoreId = sp.get("tienda");
   if (isAdmin) return <SellerApp />;
-  return <StoreFront storeId={publicStoreId} />;
+  return <StoreFront storeId={publicStoreId} host={window.location.hostname} />;
 }
 
 /* ---- Área de vendedores: login + panel (sesión propia) ---- */
@@ -508,7 +509,7 @@ function SellerApp({ onExit }) {
 }
 
 /* ---- Vitrina pública: la tienda, con acceso secreto al panel ---- */
-function StoreFront({ storeId }) {
+function StoreFront({ storeId, host }) {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -517,7 +518,7 @@ function StoreFront({ storeId }) {
   useEffect(() => {
     (async () => {
       try {
-        const s = await getStorePublic(storeId);
+        const s = await getStorePublic(storeId, host);
         if (!s) { setError("Tienda no encontrada."); setLoading(false); return; }
         setStore(mapStore(s));
         const rows = await listProducts(s.id);
@@ -679,7 +680,7 @@ function Main({ onLogout }) {
   const updateStoreH = async (next) => {
     setStore(next);
     try {
-      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, theme: next.theme, slides: next.slides, sii: next.sii, whatsapp: next.whatsapp, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
+      await upsertStore({ id: next.id, name: next.name, emoji: next.emoji, logo_a: next.logoA, logo_b: next.logoB, logo_url: next.logoUrl ?? null, theme: next.theme, slides: next.slides, sii: next.sii, whatsapp: next.whatsapp, slug: next.slug || null, domain: next.domain || null, promo_eyebrow: next.promo.eyebrow, promo_title: next.promo.title, promo_sub: next.promo.sub, bank: next.bank });
     } catch (e) { alert(e.message); }
   };
   const uploadLogoH = async (file) => {
@@ -1440,6 +1441,19 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
             <div className="av-themerow"><span>Redondeo de esquinas</span><div style={{ display: "flex", alignItems: "center", gap: 10 }}><input type="range" min="0" max="32" step="1" value={t.cardRadius ?? 18} onChange={(e) => upT("cardRadius", Number(e.target.value))} /><span style={{ width: 34, textAlign: "right", fontSize: 12, color: "var(--ink2)" }}>{t.cardRadius ?? 18}px</span></div></div>
             <div className="av-themerow" style={{ borderBottom: 0 }}><span>Sombra</span><button className={"av-toggle" + ((t.cardShadow ?? true) ? " on" : "")} onClick={() => upT("cardShadow", !(t.cardShadow ?? true))}><span className="kn" /></button></div>
           </div>
+        </div>
+      </BrandSection>
+
+      <BrandSection id="dominio" title="Dirección web (dominio)" openSet={openSet} setOpenSet={setOpenSet}>
+        <div className="av-field"><label>Nombre corto (para tu enlace gratis)</label>
+          <input className="av-input" value={store.slug || ""} onChange={(e) => up("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40))} placeholder="gamerstock" />
+          {store.slug
+            ? <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Tu enlace gratis para compartir:<br /><b style={{ wordBreak: "break-all" }}>{window.location.origin}/?tienda={store.slug}</b></p>
+            : <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Elige un nombre corto (solo minúsculas, números y guiones) para tener un enlace gratis para compartir.</p>}
+        </div>
+        <div className="av-field"><label>Dominio propio (opcional)</label>
+          <input className="av-input" value={store.domain || ""} onChange={(e) => up("domain", e.target.value.toLowerCase().replace(/[^a-z0-9.-]/g, ""))} placeholder="mitienda.cl" />
+          <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Si tienes un dominio propio, escríbelo aquí y luego conéctalo en Vercel. Mientras no esté conectado en Vercel apuntando a esta app, no funcionará. (Recuerda: un dominio se paga por año.)</p>
         </div>
       </BrandSection>
 
