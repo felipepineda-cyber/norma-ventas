@@ -299,6 +299,10 @@ const CSS = `
 .av-photodel{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--hot);color:#fff;border:2px solid #fff;font-size:12px;cursor:pointer;display:grid;place-items:center;line-height:1;}
 .av-photoadd{width:70px;height:70px;border-radius:14px;border:2px dashed var(--line);display:grid;place-items:center;cursor:pointer;color:var(--muted);font-size:24px;}
 .av-photoadd:hover{border-color:var(--accent);color:var(--accent);}
+.av-photomove{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:3px;}
+.av-photomove button{width:22px;height:22px;border-radius:7px;border:0;background:rgba(20,20,28,.72);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:grid;place-items:center;}
+.av-photomove button:disabled{opacity:.3;cursor:default;}
+.av-photomain{position:absolute;top:4px;left:4px;background:var(--accent);color:#fff;font-size:8.5px;font-weight:700;padding:2px 5px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-colorchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .av-colorchip{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;background:#fff;}
 .av-colordot{width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 1px var(--line);flex:none;}
@@ -1086,7 +1090,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
       <div className="av-screen">
         <div className="av-tabbar">{tabs.map(([k, l]) => <div key={k} className={"av-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</div>)}</div>
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
-        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onSetStock={onSetStock} />}
+        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onSetStock={onSetStock} storeId={store.id} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
@@ -1172,11 +1176,11 @@ function SwipeRow({ onEdit, onDelete, children }) {
   );
 }
 
-function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onSetStock }) {
+function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onSetStock, storeId }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
   if (adding) return <AddProduct onCancel={() => setAdding(false)} onCreate={onCreate} />;
-  if (editing) { const live = products.find((p) => p.id === editing.id) || editing; return <EditProduct product={live} onCancel={() => setEditing(null)} onSave={onEdit} onSetStock={onSetStock} />; }
+  if (editing) { const live = products.find((p) => p.id === editing.id) || editing; return <EditProduct product={live} storeId={storeId} onCancel={() => setEditing(null)} onSave={onEdit} onSetStock={onSetStock} />; }
   return (
     <div className="av-anim av-pad">
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
@@ -1191,7 +1195,8 @@ function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onSetS
   );
 }
 
-function EditProduct({ product, onCancel, onSave, onSetStock }) {
+function EditProduct({ product, storeId, onCancel, onSave, onSetStock }) {
+  const MAXP = 6;
   const [f, setF] = useState({
     name: product.name || "",
     category: product.category === "General" ? "" : (product.category || ""),
@@ -1201,6 +1206,11 @@ function EditProduct({ product, onCancel, onSave, onSetStock }) {
     desc: product.desc || "",
   });
   const up = (k, v) => setF({ ...f, [k]: v });
+  // fotos: existentes (url) + nuevas (file). Máx. 6, reordenables.
+  const [photos, setPhotos] = useState(() => (product.images || []).map((url) => ({ url, file: null })));
+  const onPhotos = (e) => { const fs = [...(e.target.files || [])]; setPhotos((ps) => [...ps, ...fs.map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, MAXP)); e.target.value = ""; };
+  const delPhoto = (i) => setPhotos((ps) => ps.filter((_, x) => x !== i));
+  const movePhoto = (i, dir) => setPhotos((ps) => { const j = i + dir; if (j < 0 || j >= ps.length) return ps; const a = [...ps]; [a[i], a[j]] = [a[j], a[i]]; return a; });
   // copia editable del stock por variante
   const [stocks, setStocks] = useState(() => Object.fromEntries(product.variants.map((v) => [v.id, v.stock])));
   const setStk = (id, val) => setStocks((s) => ({ ...s, [id]: Math.max(0, Number(val) || 0) }));
@@ -1209,6 +1219,11 @@ function EditProduct({ product, onCancel, onSave, onSetStock }) {
   const save = async () => {
     setSaving(true);
     try {
+      const newFiles = photos.filter((p) => p.file).map((p) => p.file);
+      let uploaded = [];
+      if (newFiles.length) uploaded = await uploadProductImages(storeId, newFiles);
+      let ui = 0;
+      const finalImages = photos.map((p) => (p.file ? uploaded[ui++] : p.url));
       await onSave(product.id, {
         name: f.name.trim(),
         category: f.category.trim() || "General",
@@ -1216,6 +1231,7 @@ function EditProduct({ product, onCancel, onSave, onSetStock }) {
         description: f.desc,
         benefits: f.benefits.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3),
         normal_price: Number(f.price),
+        images: finalImages,
       });
       // aplica los cambios de stock que hayan variado
       product.variants.forEach((v) => { if (stocks[v.id] !== v.stock && onSetStock) onSetStock(v.id, product.id, stocks[v.id]); });
@@ -1225,6 +1241,20 @@ function EditProduct({ product, onCancel, onSave, onSetStock }) {
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Editar producto</span></div>
+      <div className="av-field"><label>Fotos del producto (máx. 6)</label>
+        <div className="av-photos">
+          {photos.map((im, i) => (
+            <div key={i} className="av-photowrap">
+              <img src={im.url} className="av-photo" alt={"foto " + (i + 1)} />
+              {i === 0 && <span className="av-photomain">Principal</span>}
+              <button className="av-photodel" onClick={() => delPhoto(i)}>×</button>
+              <div className="av-photomove"><button disabled={i === 0} onClick={() => movePhoto(i, -1)}>‹</button><button disabled={i === photos.length - 1} onClick={() => movePhoto(i, 1)}>›</button></div>
+            </div>
+          ))}
+          {photos.length < MAXP && <label className="av-photoadd">{I.plus({ width: 22, height: 22 })}<input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} /></label>}
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>La primera foto es la principal. Usa ‹ › para reordenar y × para borrar. Si no dejas ninguna, se usa el ícono de respaldo.</p>
+      </div>
       <div className="av-field"><label>Ícono de respaldo</label><div className="av-emojirow">{EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (f.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
       <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
       <div className="av-field"><label>Categoría</label><input className="av-input" value={f.category} onChange={(e) => up("category", e.target.value)} placeholder="Ej: Poleras" /></div>
@@ -1243,6 +1273,7 @@ function EditProduct({ product, onCancel, onSave, onSetStock }) {
 }
 
 function AddProduct({ onCancel, onCreate }) {
+  const MAXP = 6;
   const [f, setF] = useState({ name: "", category: "", price: "", desc: "", emoji: "👕", benefits: "" });
   const up = (k, v) => setF({ ...f, [k]: v });
   const [images, setImages] = useState([]); // {url, file}
@@ -1255,8 +1286,9 @@ function AddProduct({ onCancel, onCreate }) {
   const [newSize, setNewSize] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const onPhotos = (e) => { const fs = [...(e.target.files || [])]; setImages((im) => [...im, ...fs.map((file) => ({ url: URL.createObjectURL(file), file }))]); };
+  const onPhotos = (e) => { const fs = [...(e.target.files || [])]; setImages((im) => [...im, ...fs.map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, MAXP)); e.target.value = ""; };
   const delPhoto = (i) => setImages((im) => im.filter((_, x) => x !== i));
+  const movePhoto = (i, dir) => setImages((im) => { const j = i + dir; if (j < 0 || j >= im.length) return im; const a = [...im]; [a[i], a[j]] = [a[j], a[i]]; return a; });
   const addColor = (c) => { if (colors.some((x) => x.name.toLowerCase() === c.name.toLowerCase())) return; setColors((cs) => [...cs, c]); };
   const addCustomColor = () => { addColor({ name: pickName.trim() || `Color ${colors.length + 1}`, hex: pickHex }); setPickName(""); };
   const delColor = (name) => setColors((cs) => cs.filter((x) => x.name !== name));
@@ -1285,7 +1317,20 @@ function AddProduct({ onCancel, onCreate }) {
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Nuevo producto</span></div>
-      <div className="av-field"><label>Fotos del producto</label><div className="av-photos">{images.map((im, i) => (<div key={i} className="av-photowrap"><img src={im.url} className="av-photo" alt={"foto " + (i + 1)} /><button className="av-photodel" onClick={() => delPhoto(i)}>×</button></div>))}<label className="av-photoadd">{I.plus({ width: 22, height: 22 })}<input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} /></label></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>La primera foto es la principal. Si no subes ninguna, se usa un ícono.</p></div>
+      <div className="av-field"><label>Fotos del producto (máx. 6)</label>
+        <div className="av-photos">
+          {images.map((im, i) => (
+            <div key={i} className="av-photowrap">
+              <img src={im.url} className="av-photo" alt={"foto " + (i + 1)} />
+              {i === 0 && <span className="av-photomain">Principal</span>}
+              <button className="av-photodel" onClick={() => delPhoto(i)}>×</button>
+              <div className="av-photomove"><button disabled={i === 0} onClick={() => movePhoto(i, -1)}>‹</button><button disabled={i === images.length - 1} onClick={() => movePhoto(i, 1)}>›</button></div>
+            </div>
+          ))}
+          {images.length < MAXP && <label className="av-photoadd">{I.plus({ width: 22, height: 22 })}<input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} /></label>}
+        </div>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>La primera foto es la principal. Usa ‹ › para reordenar y × para borrar. Si no subes ninguna, se usa el ícono de respaldo.</p>
+      </div>
       <div className="av-field"><label>Ícono de respaldo</label><div className="av-emojirow">{EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (f.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
       <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
       <div className="av-field"><label>Categoría</label><input className="av-input" value={f.category} onChange={(e) => up("category", e.target.value)} placeholder="Ej: Poleras" /></div>
