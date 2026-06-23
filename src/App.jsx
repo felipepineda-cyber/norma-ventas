@@ -35,6 +35,7 @@ const CSS = `
   .av-phone{max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;margin:0;}
   .av-notch{display:none;}
   .av-nav{display:none;}
+  .av-wafab{bottom:26px;right:26px;}
   /* Encabezado tipo sitio web: logo + navegación + acciones, centrado */
   .av-top{position:sticky;top:0;padding:0 32px;height:64px;display:flex;align-items:center;gap:20px;justify-content:flex-start;}
   .av-top > .av-store{margin-right:8px;}
@@ -209,6 +210,11 @@ const CSS = `
 .av-btn.primary:disabled{background:#CBCBD8;box-shadow:none;cursor:not-allowed;}
 .av-btn.dark{background:var(--ink);color:#fff;}
 .av-btn.wa{background:var(--wa);color:#fff;flex:none;width:56px;padding:15px 0;}
+.av-wafab{position:absolute;right:14px;bottom:84px;z-index:45;display:flex;align-items:center;gap:9px;background:var(--wa, #25D366);color:#fff;text-decoration:none;padding:8px 15px 8px 8px;border-radius:999px;box-shadow:0 10px 26px -8px rgba(37,211,102,.75);font-size:11.5px;font-weight:600;line-height:1.12;animation:wapop .3s ease;}
+.av-wafab:active{transform:scale(.95);}
+.av-wafabic{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.22);flex:0 0 auto;}
+.av-wafabtx b{font-weight:800;font-size:12.5px;}
+@keyframes wapop{from{opacity:0;transform:translateY(8px) scale(.9);}to{opacity:1;transform:none;}}
 .av-btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
 .av-btn.block{width:100%;}
 .av-pagehead{padding:40px 18px 14px;display:flex;align-items:center;gap:10px;}
@@ -766,6 +772,18 @@ function Main({ onLogout }) {
 }
 
 /* ============================ COMPRADOR ============================ */
+function WaFab({ store }) {
+  if (!store.whatsapp) return null;
+  const msg = `¡Hola ${store.name}! Tengo una duda 🙂`;
+  const link = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(msg)}`;
+  return (
+    <a href={link} target="_blank" rel="noreferrer" className="av-wafab" title="Escríbenos por WhatsApp">
+      <span className="av-wafabic">{I.wa({ width: 21, height: 21 })}</span>
+      <span className="av-wafabtx">¿Tienes dudas?<br /><b>Escríbenos</b></span>
+    </a>
+  );
+}
+
 function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) {
   const [tab, setTab] = useState("home");
   const [detailId, setDetailId] = useState(null);
@@ -839,6 +857,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
           <button key={k} className={"av-navb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{ic({ width: 22, height: 22 })}{k === "cart" && cartCount > 0 && <span className="ndot">{cartCount}</span>}{k === "favs" && favs.length > 0 && <span className="ndot">{favs.length}</span>}<span>{l}</span></button>
         ))}
       </div>
+      {tab !== "cart" && <WaFab store={store} />}
     </>
   );
 }
