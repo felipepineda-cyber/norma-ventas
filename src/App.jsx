@@ -66,7 +66,7 @@ const CSS = `
 /* superficies del panel de vendedor bajo vidrio */
 .av-glass .av-input,.av-glass .av-select,.av-glass .av-srow2,.av-glass .av-orderc,.av-glass .av-acc,.av-glass .av-themebox,.av-glass .av-merch,.av-glass .av-preview,.av-glass .av-prevscroll,.av-glass .av-feat{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
 /* ---- Estilo: Vidrio oscuro ---- */
-.av-glassdark{--ink:#F4F4F7;--ink2:#D8D8DF;--muted:#A2A2AD;background:var(--shop-bg, #15151B);}
+.av-glassdark{--ink:#F4F4F7;--ink2:#D8D8DF;--muted:#A2A2AD;--line:rgba(255,255,255,.14);--soft:rgba(255,255,255,.07);--surface:#23232B;--accent-soft:rgba(123,77,255,.26);background:var(--shop-bg, #15151B);}
 .av-glassdark .av-top,.av-glassdark .av-nav,.av-glassdark .av-card,.av-glassdark .av-bottombar,.av-glassdark .av-sheet,.av-glassdark .av-search,.av-glassdark .av-chip,.av-glassdark .av-iconbtn,.av-glassdark .av-input,.av-glassdark .av-select,.av-glassdark .av-srow2,.av-glassdark .av-orderc,.av-glassdark .av-acc,.av-glassdark .av-themebox,.av-glassdark .av-merch,.av-glassdark .av-preview,.av-glassdark .av-prevscroll,.av-glassdark .av-feat{background:rgba(40,40,48,.55);border-color:rgba(255,255,255,.12);color:var(--ink);}
 .av-glassdark .av-name,.av-glassdark .av-pagetitle,.av-glassdark .av-accmon,.av-glassdark h3,.av-glassdark .av-input{color:var(--ink);}
 .av-glassdark .av-input::placeholder{color:var(--muted);}
@@ -76,6 +76,24 @@ const CSS = `
 .av-minimal .av-top{background:rgba(255,255,255,.92);border-bottom:1px solid #F0F0F2;}
 .av-minimal .av-nav{background:rgba(255,255,255,.96);border-top:1px solid #F0F0F2;}
 .av-minimal .av-srow2,.av-minimal .av-orderc,.av-minimal .av-acc,.av-minimal .av-themebox,.av-minimal .av-merch{box-shadow:none;border:1px solid #F0F0F2;}
+/* ---- Panel: pestañas, hamburguesa y menú lateral toman el estilo ---- */
+.av-glass .av-tabbar{background:rgba(255,255,255,.5);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.55);}
+.av-glass .av-burger{background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.5);}
+.av-glass .av-drawer{background:rgba(255,255,255,.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border-right:1px solid rgba(255,255,255,.6);}
+.av-glassdark .av-tabbar,.av-glassdark .av-burger{background:rgba(40,40,48,.62);border-color:rgba(255,255,255,.12);color:var(--ink);}
+.av-glassdark .av-drawer{background:rgba(26,26,32,.92);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border-right:1px solid rgba(255,255,255,.1);}
+.av-glassdark .av-draweritem,.av-glassdark .av-storename,.av-glassdark .av-tab,.av-glassdark .av-burger{color:var(--ink);}
+.av-glassdark .av-draweritem:hover{background:rgba(255,255,255,.08);}
+.av-minimal .av-tabbar{background:rgba(255,255,255,.96);border-bottom:1px solid #F0F0F2;}
+.av-minimal .av-burger{background:#fff;border:1px solid #ECECEF;}
+.av-minimal .av-drawer{border-right:1px solid #F0F0F2;}
+/* ---- Cobertura total: controles de formularios y botones en todas las páginas ---- */
+.av-glass .av-emojibtn,.av-glass .av-stepchip,.av-glass .av-minitag,.av-glass .av-stbtn,.av-glass .av-colorchip,.av-glass .av-paybtn,.av-glass .av-size,.av-glass .av-modeswitch,.av-glass .av-copy,.av-glass .av-prevlabel,.av-glass .av-stylecard,.av-glass .av-switch,.av-glass .av-stockin,.av-glass .av-colorpick{background:rgba(255,255,255,.5);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);border-color:rgba(255,255,255,.55);}
+.av-glassdark .av-emojibtn,.av-glassdark .av-stepchip,.av-glassdark .av-minitag,.av-glassdark .av-stbtn,.av-glassdark .av-colorchip,.av-glassdark .av-paybtn,.av-glassdark .av-size,.av-glassdark .av-modeswitch,.av-glassdark .av-copy,.av-glassdark .av-prevlabel,.av-glassdark .av-stylecard,.av-glassdark .av-switch,.av-glassdark .av-stockin,.av-glassdark .av-colorpick{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:var(--ink);}
+.av-glassdark .av-btn.dark{background:rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;border:1px solid rgba(255,255,255,.18);}
+.av-glassdark .av-mcell{background:rgba(255,255,255,.16);color:var(--ink);border-color:rgba(255,255,255,.28);}
+.av-glassdark .av-toast{background:rgba(15,15,20,.94);}
+.av-minimal .av-emojibtn,.av-minimal .av-stepchip,.av-minimal .av-minitag,.av-minimal .av-stbtn,.av-minimal .av-colorchip,.av-minimal .av-paybtn,.av-minimal .av-size,.av-minimal .av-prevlabel,.av-minimal .av-stylecard{background:#fff;border:1px solid #ECECEF;}
 /* selector de estilo en Marca */
 .av-stylegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .av-stylecard{text-align:left;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:2px;font-family:inherit;}
