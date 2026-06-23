@@ -143,6 +143,10 @@ const CSS = `
 .av-minidots i.on{width:14px;border-radius:999px;background:#fff;}
 .av-galnav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.82);backdrop-filter:blur(4px);display:grid;place-items:center;cursor:pointer;z-index:2;box-shadow:0 2px 8px -2px rgba(0,0,0,.3);color:var(--ink);}
 .av-galnav:active{transform:translateY(-50%) scale(.92);}
+.av-thumbs{display:flex;gap:8px;overflow-x:auto;padding:12px 18px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.av-thumbs::-webkit-scrollbar{display:none;}
+.av-thumbmini{flex:0 0 auto;width:54px;height:54px;border-radius:12px;background-size:cover;background-position:center;border:2px solid transparent;cursor:pointer;padding:0;transition:.15s;opacity:.62;}
+.av-thumbmini.on{border-color:var(--accent);opacity:1;}
 .av-cat{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
 .av-name{font-size:13px;font-weight:600;line-height:1.25;}
 .av-rate{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink2);font-weight:600;font-family:'Space Grotesk';}
@@ -921,8 +925,14 @@ function Card({ p, fav, onFav, onClick, preview }) {
   const low = stock > 0 && stock <= 3; const pct = off(p.price, p.was); const hasImg = p.images && p.images.length;
   const imgs = hasImg ? p.images : null;
   const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
   const startX = useRef(null); const moved = useRef(false);
-  const onStart = (e) => { startX.current = e.touches[0].clientX; moved.current = false; };
+  useEffect(() => {
+    if (paused || !imgs || imgs.length < 2) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % imgs.length), 3000);
+    return () => clearInterval(t);
+  }, [paused, imgs]);
+  const onStart = (e) => { setPaused(true); startX.current = e.touches[0].clientX; moved.current = false; };
   const onMove = (e) => { if (startX.current != null && Math.abs(e.touches[0].clientX - startX.current) > 8) moved.current = true; };
   const onEnd = (e) => {
     if (imgs && imgs.length > 1 && startX.current != null) {
@@ -932,7 +942,7 @@ function Card({ p, fav, onFav, onClick, preview }) {
     startX.current = null;
   };
   const cardClick = () => { if (moved.current) { moved.current = false; return; } onClick(); };
-  const goDot = (e, i) => { e.stopPropagation(); setIdx(i); };
+  const goDot = (e, i) => { e.stopPropagation(); setPaused(true); setIdx(i); };
   return (
     <div className="av-card" onClick={cardClick}>
       <div className="av-thumb" style={imgs ? imgBg(imgs[idx]) : grad(p.g[0], p.g[1])} onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}>{!hasImg && <span>{p.emoji}</span>}<div className="av-badges">{p.top && <span className="av-badge top">★ Top</span>}{p.was && <span className="av-badge sale">-{pct}%</span>}{p.isNew && !p.was && !p.top && <span className="av-badge new">Nuevo</span>}{low && <span className="av-badge stock">Últimas {stock}</span>}{stock === 0 && <span className="av-badge stock">Sin stock</span>}</div>{!preview && <button className={"av-heart" + (fav ? " on" : "")} onClick={(e) => { e.stopPropagation(); onFav(); }}>{I.heart(fav)({ width: 17, height: 17 })}</button>}{imgs && imgs.length > 1 && <div className="av-minidots">{imgs.map((_, i) => <i key={i} className={idx === i ? "on" : ""} onClick={(e) => goDot(e, i)} />)}</div>}</div>
@@ -951,10 +961,12 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const hasSizes = sizesForColor.some((v) => v.size && v.size !== "Única");
   const [size, setSize] = useState(sizesForColor[0]?.size);
   const [slide, setSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
   const gx = useRef(null);
-  const galStart = (e) => { gx.current = e.touches[0].clientX; };
+  const galStart = (e) => { setPaused(true); gx.current = e.touches[0].clientX; };
   const galEnd = (e) => { if (gx.current == null) return; const dx = e.changedTouches[0].clientX - gx.current; if (Math.abs(dx) > 35) setSlide((s) => { const n = slides.length; return dx < 0 ? (s + 1) % n : (s - 1 + n) % n; }); gx.current = null; };
-  const galGo = (dir) => setSlide((s) => { const n = slides.length; return (s + dir + n) % n; });
+  const galGo = (dir) => { setPaused(true); setSlide((s) => { const n = slides.length; return (s + dir + n) % n; }); };
+  const galPick = (i) => { setPaused(true); setSlide(i); };
   useEffect(() => { const list = product.variants.filter((v) => v.color === color); if (!list.some((v) => v.size === size)) setSize(list[0]?.size); }, [color]); // eslint-disable-line
   const variant = product.variants.find((v) => v.color === color && v.size === size);
   const stock = variant?.stock ?? 0; const pct = off(product.price, product.was);
@@ -964,6 +976,11 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const variantLabel = [hasColors ? color : null, hasSizes && size !== "Única" ? size : null].filter(Boolean).join(" / ");
   const waMsg = `Hola ${store.name}, me interesa *${product.name}*${variantLabel ? " (" + variantLabel + ")" : ""} a ${CLP(product.price)}. ¿Está disponible?`;
   const waLink = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(waMsg)}`;
+  useEffect(() => {
+    if (paused || slides.length < 2) return;
+    const t = setInterval(() => setSlide((s) => (s + 1) % slides.length), 3000);
+    return () => clearInterval(t);
+  }, [paused, slides.length]);
   return (
     <div className="av-anim av-pad">
       <div className="av-gallery" style={hasImg ? imgBg(slides[slide]) : grad(slides[slide][0], slides[slide][1])} onTouchStart={galStart} onTouchEnd={galEnd}>
@@ -972,8 +989,11 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         {!hasImg && <span>{product.emoji}</span>}
         <div className="av-badges" style={{ top: 96 }}>{product.top && <span className="av-badge top">★ Más vendido</span>}{product.was && <span className="av-badge sale">-{pct}%</span>}</div>
         {slides.length > 1 && <><button className="av-galnav" style={{ left: 12 }} onClick={() => galGo(-1)}>{I.back()}</button><button className="av-galnav" style={{ right: 12, transform: "translateY(-50%) scaleX(-1)" }} onClick={() => galGo(1)}>{I.back()}</button></>}
-        {slides.length > 1 && <div className="av-dots">{slides.map((_, i) => <i key={i} className={slide === i ? "on" : ""} onClick={() => setSlide(i)} />)}</div>}
+        {slides.length > 1 && <div className="av-dots">{slides.map((_, i) => <i key={i} className={slide === i ? "on" : ""} onClick={() => galPick(i)} />)}</div>}
       </div>
+      {hasImg && product.images.length > 1 && (
+        <div className="av-thumbs">{product.images.map((src, i) => (<button key={i} className={"av-thumbmini" + (slide === i ? " on" : "")} style={imgBg(src)} onClick={() => galPick(i)} aria-label={"foto " + (i + 1)} />))}</div>
+      )}
       <div className="av-sec">
         <span className="av-cat">{product.category}</span><h1 className="av-h1">{product.name}</h1>
         {product.reviews > 0 && <div className="av-rate" style={{ marginTop: 8, fontSize: 13 }}><Stars v={product.rating} /><span>{product.rating}</span><span className="c">· {product.reviews} reseñas</span></div>}
