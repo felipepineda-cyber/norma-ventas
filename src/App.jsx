@@ -170,6 +170,8 @@ const CSS = `
 .av-swatches{display:flex;gap:10px;flex-wrap:wrap;}
 .av-swatch{width:36px;height:36px;border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
 .av-swatch.on{box-shadow:0 0 0 2px var(--accent);}
+.av-swatch.off{opacity:.32;cursor:not-allowed;position:relative;}
+.av-swatch.off::after{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,transparent 44%,var(--muted) 46%,var(--muted) 54%,transparent 56%);}
 .av-sizes{display:flex;gap:9px;flex-wrap:wrap;}
 .av-size{min-width:48px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#fff;font-family:'Space Grotesk';font-weight:600;font-size:13px;cursor:pointer;transition:.12s;}
 .av-size.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
@@ -916,9 +918,14 @@ function Card({ p, fav, onFav, onClick, preview }) {
   );
 }
 function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated }) {
+  const NOCLR = (c) => !c || ["Único", "Única", "—", ""].includes(c);
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
+  const realColors = colors.filter((c) => !NOCLR(c));
+  const hasColors = realColors.length > 0;
+  const colorStock = (c) => product.variants.filter((v) => v.color === c).reduce((s, v) => s + v.stock, 0);
   const [color, setColor] = useState(colors[0]);
   const sizesForColor = product.variants.filter((v) => v.color === color);
+  const hasSizes = sizesForColor.some((v) => v.size && v.size !== "Única");
   const [size, setSize] = useState(sizesForColor[0]?.size);
   const [slide, setSlide] = useState(0);
   useEffect(() => { const list = product.variants.filter((v) => v.color === color); if (!list.some((v) => v.size === size)) setSize(list[0]?.size); }, [color]); // eslint-disable-line
@@ -927,7 +934,8 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const related = (() => { const r = all.filter((p) => p.id !== product.id && p.category === product.category); return r.length ? r.slice(0, 5) : all.filter((p) => p.id !== product.id).slice(0, 5); })();
   const hasImg = product.images && product.images.length;
   const slides = hasImg ? product.images : [product.g, [product.g[1], product.g[0]], ["#F2F2F6", product.g[0]]];
-  const waMsg = `Hola ${store.name}, me interesa *${product.name}* (${color}${size !== "Única" ? " / " + size : ""}) a ${CLP(product.price)}. ¿Está disponible?`;
+  const variantLabel = [hasColors ? color : null, hasSizes && size !== "Única" ? size : null].filter(Boolean).join(" / ");
+  const waMsg = `Hola ${store.name}, me interesa *${product.name}*${variantLabel ? " (" + variantLabel + ")" : ""} a ${CLP(product.price)}. ¿Está disponible?`;
   const waLink = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(waMsg)}`;
   return (
     <div className="av-anim av-pad">
@@ -942,9 +950,11 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         <span className="av-cat">{product.category}</span><h1 className="av-h1">{product.name}</h1>
         {product.reviews > 0 && <div className="av-rate" style={{ marginTop: 8, fontSize: 13 }}><Stars v={product.rating} /><span>{product.rating}</span><span className="c">· {product.reviews} reseñas</span></div>}
         <div className="av-detprice"><span className="av-price">{CLP(product.price)}</span>{product.was && <><span className="av-was">{CLP(product.was)}</span><span className="av-off">Ahorras {CLP(product.was - product.price)}</span></>}</div>
-        <div className="av-vlabel">Color · {color}</div>
-        <div className="av-swatches">{colors.map((c) => { const h = product.variants.find((v) => v.color === c)?.hex; return <div key={c} className={"av-swatch" + (color === c ? " on" : "")} style={{ background: h }} onClick={() => setColor(c)} title={c} />; })}</div>
-        {sizesForColor[0]?.size !== "Única" && (<><div className="av-vlabel">Talla</div><div className="av-sizes">{sizesForColor.map((v) => <button key={v.size} disabled={v.stock === 0} className={"av-size" + (size === v.size ? " on" : "") + (v.stock === 0 ? " off" : "")} onClick={() => v.stock > 0 && setSize(v.size)}>{v.size}</button>)}</div></>)}
+        {hasColors && (<>
+          <div className="av-vlabel">Color · {color} · {colorStock(color) === 0 ? "sin stock" : colorStock(color) + " disp."}</div>
+          <div className="av-swatches">{realColors.map((c) => { const h = product.variants.find((v) => v.color === c)?.hex; const out = colorStock(c) === 0; return <div key={c} className={"av-swatch" + (color === c ? " on" : "") + (out ? " off" : "")} style={{ background: h }} onClick={() => !out && setColor(c)} title={c + (out ? " (sin stock)" : "")} />; })}</div>
+        </>)}
+        {hasSizes && (<><div className="av-vlabel">Talla</div><div className="av-sizes">{sizesForColor.map((v) => <button key={v.size} disabled={v.stock === 0} className={"av-size" + (size === v.size ? " on" : "") + (v.stock === 0 ? " off" : "")} onClick={() => v.stock > 0 && setSize(v.size)}>{v.size}</button>)}</div></>)}
         <div style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: stock === 0 ? "var(--muted)" : stock <= 3 ? "var(--hot)" : "var(--ok)" }}>{stock === 0 ? "Sin stock en esta combinación" : stock <= 3 ? `¡Solo quedan ${stock}!` : `${stock} disponibles`}</div>
         {product.benefits?.length > 0 && <ul className="av-benefits">{product.benefits.map((b, i) => <li key={i}>{I.check()}<span>{b}</span></li>)}</ul>}
         {product.desc && <p className="av-desc">{product.desc}</p>}
@@ -1280,8 +1290,8 @@ function AddProduct({ onCancel, onCreate }) {
       <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
       <div className="av-field"><label>Categoría</label><input className="av-input" value={f.category} onChange={(e) => up("category", e.target.value)} placeholder="Ej: Poleras" /></div>
       <div className="av-field"><label>Precio (CLP) *</label><input className="av-input" type="number" value={f.price} onChange={(e) => up("price", e.target.value)} placeholder="14990" /></div>
-      <div className="av-field"><label>Colores</label>{colors.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{colors.map((c) => (<span key={c.name} className="av-colorchip"><span className="av-colordot" style={{ background: c.hex }} />{c.name}<button className="av-colordel" onClick={() => delColor(c.name)}>×</button></span>))}</div>}<div className="av-presets">{COLOR_PRESETS.map((c) => <span key={c.name} className="av-presetdot" style={{ background: c.hex }} title={c.name} onClick={() => addColor(c)} />)}</div><div className="av-coloradd"><input className="av-colorpick" type="color" value={pickHex} onChange={(e) => setPickHex(e.target.value)} title="Rueda cromática" /><input className="av-input" style={{ flex: 1, minWidth: 120 }} placeholder="Nombre del color" value={pickName} onChange={(e) => setPickName(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={addCustomColor}>Añadir</button></div></div>
-      <div className="av-field"><label>Tallas</label>{sizes.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{sizes.map((s) => (<span key={s} className="av-colorchip">{s}<button className="av-colordel" onClick={() => delSize(s)}>×</button></span>))}</div>}<div className="av-sizeadd">{SIZE_PRESETS.map((s) => <button key={s} className="av-stepchip" onClick={() => addSize(s)}>+ {s}</button>)}</div><div className="av-coloradd"><input className="av-input" style={{ flex: 1 }} placeholder="Talla personalizada" value={newSize} onChange={(e) => setNewSize(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={() => { addSize(newSize); setNewSize(""); }}>Añadir</button></div></div>
+      <div className="av-field"><label>Colores <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>{colors.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{colors.map((c) => (<span key={c.name} className="av-colorchip"><span className="av-colordot" style={{ background: c.hex }} />{c.name}<button className="av-colordel" onClick={() => delColor(c.name)}>×</button></span>))}</div>}<div className="av-presets">{COLOR_PRESETS.map((c) => <span key={c.name} className="av-presetdot" style={{ background: c.hex }} title={c.name} onClick={() => addColor(c)} />)}</div><div className="av-coloradd"><input className="av-colorpick" type="color" value={pickHex} onChange={(e) => setPickHex(e.target.value)} title="Rueda cromática" /><input className="av-input" style={{ flex: 1, minWidth: 120 }} placeholder="Nombre del color" value={pickName} onChange={(e) => setPickName(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={addCustomColor}>Añadir</button></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Déjalo vacío si el producto no tiene color (ej: electrónica, libros).</p></div>
+      <div className="av-field"><label>Tallas <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>{sizes.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{sizes.map((s) => (<span key={s} className="av-colorchip">{s}<button className="av-colordel" onClick={() => delSize(s)}>×</button></span>))}</div>}<div className="av-sizeadd">{SIZE_PRESETS.map((s) => <button key={s} className="av-stepchip" onClick={() => addSize(s)}>+ {s}</button>)}</div><div className="av-coloradd"><input className="av-input" style={{ flex: 1 }} placeholder="Talla personalizada" value={newSize} onChange={(e) => setNewSize(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={() => { addSize(newSize); setNewSize(""); }}>Añadir</button></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Déjalo vacío si el producto no tiene talla (ej: bufandas, accesorios).</p></div>
       {hasVariants ? (
         <div className="av-field"><label>Stock por color y talla</label><div className="av-matrix"><table className="av-mtable"><thead><tr><th></th>{ss.map((s) => <th key={s}>{s}</th>)}</tr></thead><tbody>{cs.map((c) => (<tr key={c.name}><td><span className="av-mcolor"><span className="av-colordot" style={{ background: c.hex }} />{c.name}</span></td>{ss.map((s) => { const key = c.name + "||" + s; return (<td key={s}><input className="av-mcell" type="number" min="0" value={matrix[key] ?? ""} placeholder="0" onChange={(e) => setCell(key, e.target.value)} /></td>); })}</tr>))}</tbody></table></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Escribe la cantidad en cada celda. Solo se guardan las combinaciones con stock mayor a 0.</p></div>
       ) : (
