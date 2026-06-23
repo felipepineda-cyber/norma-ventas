@@ -1701,42 +1701,61 @@ function MPCredentials({ store }) {
   );
 }
 
-function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
-  const up = (k, v) => onUpdateStore({ ...store, [k]: v });
-  const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
-  const b = store.bank || {};
-  const Wrap = ({ title, children }) => (
+const BANCOS_CL = ["BancoEstado", "Banco de Chile / Edwards", "Banco Santander", "Banco BCI", "Banco Itaú", "Scotiabank", "Banco Falabella", "Banco Ripley", "Banco Security", "Banco BICE", "Banco Consorcio", "Banco Internacional", "Coopeuch", "Banco BTG Pactual", "HSBC Chile", "Mercado Pago", "Tenpo", "MACH (BCI)", "Otro"];
+const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta RUT", "Chequera Electrónica", "Cuenta de Ahorro"];
+
+function PageWrap({ title, children }) {
+  return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-pagetitle2">{title}</div>
       {children}
     </div>
   );
+}
+
+function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
+  const up = (k, v) => onUpdateStore({ ...store, [k]: v });
+  const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
+  const b = store.bank || {};
 
   if (section === "seguridad") return (
-    <Wrap title="Seguridad">
+    <PageWrap title="Seguridad">
       <SecureArea store={store}>
         <SellerSecurity store={store} />
         <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
         <MPCredentials store={store} />
       </SecureArea>
-    </Wrap>
+    </PageWrap>
   );
 
   if (section === "pagos") return (
-    <Wrap title="Métodos de pago">
+    <PageWrap title="Métodos de pago">
       <SellerPayments store={store} onUpdateStore={onUpdateStore} onGo={onGo} />
       <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
       <div className="av-field" style={{ paddingTop: 0 }}><label>Datos bancarios (para transferencia)</label></div>
-      {[["banco", "Banco"], ["tipo", "Tipo de cuenta"], ["numero", "N° de cuenta"], ["rut", "RUT"], ["titular", "Titular"], ["correo", "Correo"]].map(([k, l]) => (
-        <div key={k} className="av-field"><label>{l}</label><input className="av-input" value={b[k] || ""} onChange={(e) => upBank(k, e.target.value)} /></div>
-      ))}
-    </Wrap>
+      <div className="av-field"><label>Banco</label>
+        <select className="av-input" value={b.banco || ""} onChange={(e) => upBank("banco", e.target.value)}>
+          <option value="">Selecciona tu banco…</option>
+          {BANCOS_CL.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </div>
+      <div className="av-field"><label>Tipo de cuenta</label>
+        <select className="av-input" value={b.tipo || ""} onChange={(e) => upBank("tipo", e.target.value)}>
+          <option value="">Selecciona el tipo…</option>
+          {TIPOS_CUENTA.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </div>
+      <div className="av-field"><label>N° de cuenta</label><input className="av-input" inputMode="numeric" value={b.numero || ""} onChange={(e) => upBank("numero", e.target.value.replace(/\D/g, ""))} placeholder="00012345678" /></div>
+      <div className="av-field"><label>RUT del titular</label><input className="av-input" value={b.rut || ""} onChange={(e) => upBank("rut", e.target.value)} placeholder="12.345.678-9" /></div>
+      <div className="av-field"><label>Titular</label><input className="av-input" value={b.titular || ""} onChange={(e) => upBank("titular", e.target.value)} placeholder="Nombre y apellido" /></div>
+      <div className="av-field"><label>Correo</label><input className="av-input" type="email" value={b.correo || ""} onChange={(e) => upBank("correo", e.target.value)} placeholder="correo@ejemplo.cl" /></div>
+    </PageWrap>
   );
 
-  if (section === "avisos") return <Wrap title="Avisos por WhatsApp"><SellerNotify store={store} /></Wrap>;
+  if (section === "avisos") return <PageWrap title="Avisos por WhatsApp"><SellerNotify store={store} /></PageWrap>;
 
   return (
-    <Wrap title="Datos de la tienda">
+    <PageWrap title="Datos de la tienda">
       <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
       <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
       <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
@@ -1758,6 +1777,6 @@ function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
         </div>
         <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Cómo funciona: <b>1)</b> compras tu dominio (para <b>.cl</b> usa NIC Chile). <b>2)</b> lo conectas en Vercel (Settings → Domains → Add Domain). <b>3)</b> lo escribes arriba. El dominio es tuyo aunque la app esté en Vercel.</p>
       </div>
-    </Wrap>
+    </PageWrap>
   );
 }
