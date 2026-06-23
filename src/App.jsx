@@ -996,7 +996,7 @@ function Checkout({ store, total, onBack, onPlace, showToast }) {
   const rows = [["Banco", b.banco], ["Tipo de cuenta", b.tipo], ["N° de cuenta", b.numero], ["RUT", b.rut], ["Titular", b.titular], ["Correo", b.correo]].filter(([, v]) => v);
   const submit = async () => { setSending(true); try { await onPlace({ name, phone }, comp, method); } catch (e) { alert(e.message); setSending(false); } };
   const title = method === "efectivo" ? "Pagar en efectivo" : method === "mercadopago" ? "Pagar con Mercado Pago" : "Pagar por transferencia";
-  const mpOn = !!(store.theme && store.theme.mp);
+  const mpOn = !!(store.sii && store.theme && store.theme.mp);
   return (
     <div className="av-anim av-pad">
       <div className="av-pagehead"><button className="av-back" style={{ position: "static" }} onClick={onBack}>{I.back()}</button><span className="av-pagetitle">{title}</span></div>
@@ -1590,7 +1590,18 @@ function SellerNotify({ store }) {
 function SellerPayments({ store, onUpdateStore, onGo }) {
   const t = store.theme || {};
   const on = !!t.mp;
+  const sii = !!store.sii;
   const toggle = () => onUpdateStore({ ...store, theme: { ...t, mp: !on } });
+  if (!sii) return (
+    <div className="av-field" style={{ paddingTop: 4 }}>
+      <label>Pagos con Mercado Pago</label>
+      <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ color: "var(--muted)" }}>{I.lock({ width: 22, height: 22 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Se habilita al verificarte en el SII</div></div>
+        <p className="av-hint" style={{ textAlign: "left", margin: 0 }}>Para cobrar con tarjeta por Mercado Pago necesitas estar verificado en el SII y poder emitir boletas (el comprobante de Mercado Pago sirve como boleta). Actívalo en Datos de la tienda.</p>
+        {onGo && <button className="av-btn dark block" onClick={() => onGo("datos")}>{I.store({ width: 16, height: 16 })} Ir a Datos de la tienda</button>}
+      </div>
+    </div>
+  );
   return (
     <div className="av-field" style={{ paddingTop: 4 }}>
       <label>Pagos con Mercado Pago</label>
@@ -1682,18 +1693,26 @@ function MPCredentials({ store }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [show, setShow] = useState(false);
+  const sii = !!store.sii;
   useEffect(() => {
+    if (!sii) { setLoaded(true); return; }
     (async () => {
       try { const m = await getStoreMP(store.id); setTok(m.access_token || ""); setPk(m.public_key || ""); } catch { /* noop */ }
       finally { setLoaded(true); }
     })();
-  }, [store.id]);
+  }, [store.id, sii]);
   const save = async () => {
     setSaving(true); setSaved(false);
     try { await saveStoreMP(store.id, { access_token: tok.trim(), public_key: pk.trim() }); setSaved(true); }
     catch (e) { alert(e.message); }
     finally { setSaving(false); }
   };
+  if (!sii) return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><span style={{ color: "var(--muted)" }}>{I.lock({ width: 20, height: 20 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Credenciales de Mercado Pago</div></div>
+      <p className="av-hint" style={{ textAlign: "left", margin: 0 }}>Esta sección se habilita cuando tu tienda está verificada en el SII (Datos de la tienda). Mientras tanto, conectar Mercado Pago no está disponible.</p>
+    </div>
+  );
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><span style={{ color: "var(--accent)" }}>{I.card({ width: 20, height: 20 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Credenciales de Mercado Pago</div></div>
@@ -1766,7 +1785,8 @@ function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
 
   return (
     <PageWrap title="Datos de la tienda">
-      <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Formalizado en el SII</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Muestra sello “Verificado en el SII”" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
+      <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Verificado en el SII (puedo emitir boletas)</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Sello “Verificado en el SII” + habilita Mercado Pago" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Actívalo solo si hiciste “inicio de actividades” en el SII y puedes emitir boletas. Al activarlo se habilita el cobro con <b>Mercado Pago</b> (su comprobante sirve como boleta). Si no estás verificado, Mercado Pago permanece oculto para ti y para tus clientes.</p>
       <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
       <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
       <div className="av-field" style={{ paddingTop: 0 }}><label>Dirección web — nombre corto (enlace gratis)</label>
