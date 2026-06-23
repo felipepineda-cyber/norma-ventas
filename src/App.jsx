@@ -138,6 +138,11 @@ const CSS = `
 .av-heart{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.9);border:0;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(4px);color:var(--muted);}
 .av-heart.on{color:var(--hot);}
 .av-cardbody{padding:11px 12px 13px;display:flex;flex-direction:column;gap:3px;}
+.av-minidots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:2;}
+.av-minidots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.6);box-shadow:0 0 2px rgba(0,0,0,.35);transition:.2s;cursor:pointer;}
+.av-minidots i.on{width:14px;border-radius:999px;background:#fff;}
+.av-galnav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.82);backdrop-filter:blur(4px);display:grid;place-items:center;cursor:pointer;z-index:2;box-shadow:0 2px 8px -2px rgba(0,0,0,.3);color:var(--ink);}
+.av-galnav:active{transform:translateY(-50%) scale(.92);}
 .av-cat{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
 .av-name{font-size:13px;font-weight:600;line-height:1.25;}
 .av-rate{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink2);font-weight:600;font-family:'Space Grotesk';}
@@ -914,9 +919,23 @@ function Favs({ products, favs, toggleFav, open, goHome }) {
 function Card({ p, fav, onFav, onClick, preview }) {
   const stock = p.variants.reduce((s, v) => s + v.stock, 0);
   const low = stock > 0 && stock <= 3; const pct = off(p.price, p.was); const hasImg = p.images && p.images.length;
+  const imgs = hasImg ? p.images : null;
+  const [idx, setIdx] = useState(0);
+  const startX = useRef(null); const moved = useRef(false);
+  const onStart = (e) => { startX.current = e.touches[0].clientX; moved.current = false; };
+  const onMove = (e) => { if (startX.current != null && Math.abs(e.touches[0].clientX - startX.current) > 8) moved.current = true; };
+  const onEnd = (e) => {
+    if (imgs && imgs.length > 1 && startX.current != null) {
+      const dx = e.changedTouches[0].clientX - startX.current;
+      if (Math.abs(dx) > 30) setIdx((i) => (dx < 0 ? (i + 1) % imgs.length : (i - 1 + imgs.length) % imgs.length));
+    }
+    startX.current = null;
+  };
+  const cardClick = () => { if (moved.current) { moved.current = false; return; } onClick(); };
+  const goDot = (e, i) => { e.stopPropagation(); setIdx(i); };
   return (
-    <div className="av-card" onClick={onClick}>
-      <div className="av-thumb" style={mediaStyle(p)}>{!hasImg && <span>{p.emoji}</span>}<div className="av-badges">{p.top && <span className="av-badge top">★ Top</span>}{p.was && <span className="av-badge sale">-{pct}%</span>}{p.isNew && !p.was && !p.top && <span className="av-badge new">Nuevo</span>}{low && <span className="av-badge stock">Últimas {stock}</span>}{stock === 0 && <span className="av-badge stock">Sin stock</span>}</div>{!preview && <button className={"av-heart" + (fav ? " on" : "")} onClick={(e) => { e.stopPropagation(); onFav(); }}>{I.heart(fav)({ width: 17, height: 17 })}</button>}</div>
+    <div className="av-card" onClick={cardClick}>
+      <div className="av-thumb" style={imgs ? imgBg(imgs[idx]) : grad(p.g[0], p.g[1])} onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}>{!hasImg && <span>{p.emoji}</span>}<div className="av-badges">{p.top && <span className="av-badge top">★ Top</span>}{p.was && <span className="av-badge sale">-{pct}%</span>}{p.isNew && !p.was && !p.top && <span className="av-badge new">Nuevo</span>}{low && <span className="av-badge stock">Últimas {stock}</span>}{stock === 0 && <span className="av-badge stock">Sin stock</span>}</div>{!preview && <button className={"av-heart" + (fav ? " on" : "")} onClick={(e) => { e.stopPropagation(); onFav(); }}>{I.heart(fav)({ width: 17, height: 17 })}</button>}{imgs && imgs.length > 1 && <div className="av-minidots">{imgs.map((_, i) => <i key={i} className={idx === i ? "on" : ""} onClick={(e) => goDot(e, i)} />)}</div>}</div>
       <div className="av-cardbody"><span className="av-cat">{p.category}</span><span className="av-name">{p.name}</span><div className="av-rate">{p.reviews > 0 ? <><Stars v={p.rating} size={11} /><span>{p.rating}</span><span className="c">({p.reviews})</span></> : <span className="c">Nuevo</span>}</div><div className="av-priceline"><span className="av-price">{CLP(p.price)}</span>{p.was && <span className="av-was">{CLP(p.was)}</span>}{p.was && <span className="av-off">-{pct}%</span>}</div></div>
     </div>
   );
@@ -932,6 +951,10 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const hasSizes = sizesForColor.some((v) => v.size && v.size !== "Única");
   const [size, setSize] = useState(sizesForColor[0]?.size);
   const [slide, setSlide] = useState(0);
+  const gx = useRef(null);
+  const galStart = (e) => { gx.current = e.touches[0].clientX; };
+  const galEnd = (e) => { if (gx.current == null) return; const dx = e.changedTouches[0].clientX - gx.current; if (Math.abs(dx) > 35) setSlide((s) => { const n = slides.length; return dx < 0 ? (s + 1) % n : (s - 1 + n) % n; }); gx.current = null; };
+  const galGo = (dir) => setSlide((s) => { const n = slides.length; return (s + dir + n) % n; });
   useEffect(() => { const list = product.variants.filter((v) => v.color === color); if (!list.some((v) => v.size === size)) setSize(list[0]?.size); }, [color]); // eslint-disable-line
   const variant = product.variants.find((v) => v.color === color && v.size === size);
   const stock = variant?.stock ?? 0; const pct = off(product.price, product.was);
@@ -943,11 +966,12 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const waLink = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(waMsg)}`;
   return (
     <div className="av-anim av-pad">
-      <div className="av-gallery" style={hasImg ? imgBg(slides[slide]) : grad(slides[slide][0], slides[slide][1])}>
+      <div className="av-gallery" style={hasImg ? imgBg(slides[slide]) : grad(slides[slide][0], slides[slide][1])} onTouchStart={galStart} onTouchEnd={galEnd}>
         <button className="av-back" onClick={onBack}>{I.back()}</button>
         <button className={"av-dheart" + (fav ? " on" : "")} onClick={onFav}>{I.heart(fav)({ width: 19, height: 19 })}</button>
         {!hasImg && <span>{product.emoji}</span>}
         <div className="av-badges" style={{ top: 96 }}>{product.top && <span className="av-badge top">★ Más vendido</span>}{product.was && <span className="av-badge sale">-{pct}%</span>}</div>
+        {slides.length > 1 && <><button className="av-galnav" style={{ left: 12 }} onClick={() => galGo(-1)}>{I.back()}</button><button className="av-galnav" style={{ right: 12, transform: "translateY(-50%) scaleX(-1)" }} onClick={() => galGo(1)}>{I.back()}</button></>}
         {slides.length > 1 && <div className="av-dots">{slides.map((_, i) => <i key={i} className={slide === i ? "on" : ""} onClick={() => setSlide(i)} />)}</div>}
       </div>
       <div className="av-sec">
@@ -1196,7 +1220,7 @@ function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onSetS
 }
 
 function EditProduct({ product, storeId, onCancel, onSave, onSetStock }) {
-  const MAXP = 6;
+  const MAXP = 8;
   const [f, setF] = useState({
     name: product.name || "",
     category: product.category === "General" ? "" : (product.category || ""),
@@ -1241,7 +1265,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock }) {
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Editar producto</span></div>
-      <div className="av-field"><label>Fotos del producto (máx. 6)</label>
+      <div className="av-field"><label>Fotos del producto (máx. 8)</label>
         <div className="av-photos">
           {photos.map((im, i) => (
             <div key={i} className="av-photowrap">
@@ -1273,7 +1297,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock }) {
 }
 
 function AddProduct({ onCancel, onCreate }) {
-  const MAXP = 6;
+  const MAXP = 8;
   const [f, setF] = useState({ name: "", category: "", price: "", desc: "", emoji: "👕", benefits: "" });
   const up = (k, v) => setF({ ...f, [k]: v });
   const [images, setImages] = useState([]); // {url, file}
@@ -1317,7 +1341,7 @@ function AddProduct({ onCancel, onCreate }) {
   return (
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Nuevo producto</span></div>
-      <div className="av-field"><label>Fotos del producto (máx. 6)</label>
+      <div className="av-field"><label>Fotos del producto (máx. 8)</label>
         <div className="av-photos">
           {images.map((im, i) => (
             <div key={i} className="av-photowrap">
