@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
-  getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, getStoreMP, saveStoreMP, verifyPassword, listProducts, createProduct, updateProduct, deleteProduct, addVariants, setOffer,
+  getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, getStoreMP, saveStoreMP, verifyPassword, joinWaitlist, listProducts, createProduct, updateProduct, deleteProduct, addVariants, setOffer,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, crearPagoMP, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -162,6 +162,10 @@ const CSS = `
 .av-minidots i.on{width:14px;border-radius:999px;background:#fff;}
 .av-galnav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.82);backdrop-filter:blur(4px);display:grid;place-items:center;cursor:pointer;z-index:2;box-shadow:0 2px 8px -2px rgba(0,0,0,.3);color:var(--ink);}
 .av-galnav:active{transform:translateY(-50%) scale(.92);}
+.av-soldlayer{position:absolute;inset:0;z-index:1;backdrop-filter:grayscale(1);-webkit-backdrop-filter:grayscale(1);box-shadow:inset 0 0 0 3px rgba(255,255,255,.85);border-radius:inherit;pointer-events:none;}
+.av-soldlayer::before{content:"";position:absolute;inset:0;background:linear-gradient(to top right,transparent calc(50% - 1.2px),rgba(75,75,88,.7) 50%,transparent calc(50% + 1.2px));}
+.av-soldlayer.sm{box-shadow:inset 0 0 0 2px rgba(255,255,255,.88);}
+.av-soldchip{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:rgba(26,24,32,.86);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:4px 12px;border-radius:999px;white-space:nowrap;}
 .av-thumbs{display:flex;gap:8px;overflow-x:auto;padding:12px 18px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .av-thumbs::-webkit-scrollbar{display:none;}
 .av-thumbmini{flex:0 0 auto;width:54px;height:54px;border-radius:12px;background-size:cover;background-position:center;border:2px solid transparent;cursor:pointer;padding:0;transition:.15s;opacity:.62;}
@@ -408,6 +412,7 @@ function mapProduct(row) {
     benefits: row.benefits || [], normalPrice: row.normal_price, offerPct: row.offer_pct || 0,
     price: row.price, was: row.was, featured: !!row.featured, top: !!row.top, active: row.active !== false,
     isNew: !!row.is_new, rating: Number(row.rating) || 0, reviews: row.reviews_count || 0, g: gradFor(row.id),
+    soldOutManual: !!row.sold_out_manual,
     variants: (row.variants || []).map((v) => ({ id: v.id, color: v.color, hex: v.hex, size: v.size, stock: v.stock }))
       .sort((a, b) => a.color.localeCompare(b.color) || String(a.size).localeCompare(String(b.size))),
   };
@@ -444,6 +449,7 @@ const I = {
   user: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>),
   bank: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 10 9-6 9 6"/><path d="M21 10H3"/><path d="M5 10v9"/><path d="M9 10v9"/><path d="M15 10v9"/><path d="M19 10v9"/><path d="M3 21h18"/></svg>),
   cash: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4"/><path d="M18 10v4"/></svg>),
+  bell: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>),
   check: (p) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
   shield: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>),
   truck: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>),
@@ -1037,6 +1043,7 @@ function Favs({ products, favs, toggleFav, open, goHome }) {
 function Card({ p, fav, onFav, onClick, preview }) {
   const stock = p.variants.reduce((s, v) => s + v.stock, 0);
   const low = stock > 0 && stock <= 3; const pct = off(p.price, p.was); const hasImg = p.images && p.images.length;
+  const out = isSoldOut(p);
   const imgs = hasImg ? p.images : null;
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -1059,7 +1066,7 @@ function Card({ p, fav, onFav, onClick, preview }) {
   const goDot = (e, i) => { e.stopPropagation(); setPaused(true); setIdx(i); };
   return (
     <div className="av-card" onClick={cardClick}>
-      <div className="av-thumb" style={imgs ? imgBg(imgs[idx]) : grad(p.g[0], p.g[1])} onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}>{!hasImg && <span>{p.emoji}</span>}<div className="av-badges">{p.top && <span className="av-badge top">★ Top</span>}{p.was && <span className="av-badge sale">-{pct}%</span>}{p.isNew && !p.was && !p.top && <span className="av-badge new">Nuevo</span>}{low && <span className="av-badge stock">Últimas {stock}</span>}{stock === 0 && <span className="av-badge stock">Sin stock</span>}</div>{!preview && <button className={"av-heart" + (fav ? " on" : "")} onClick={(e) => { e.stopPropagation(); onFav(); }}>{I.heart(fav)({ width: 17, height: 17 })}</button>}{imgs && imgs.length > 1 && <div className="av-minidots">{imgs.map((_, i) => <i key={i} className={idx === i ? "on" : ""} onClick={(e) => goDot(e, i)} />)}</div>}</div>
+      <div className="av-thumb" style={imgs ? imgBg(imgs[idx]) : grad(p.g[0], p.g[1])} onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} aria-label={out ? "Producto agotado" : undefined}>{out && <SoldLayer />}{!hasImg && <span>{p.emoji}</span>}<div className="av-badges">{p.top && <span className="av-badge top">★ Top</span>}{p.was && !out && <span className="av-badge sale">-{pct}%</span>}{p.isNew && !p.was && !p.top && !out && <span className="av-badge new">Nuevo</span>}{!out && URGENCIA_STOCK_BAJO && low && <span className="av-badge stock">Últimas {stock}</span>}</div>{!preview && <button className={"av-heart" + (fav ? " on" : "")} onClick={(e) => { e.stopPropagation(); onFav(); }}>{I.heart(fav)({ width: 17, height: 17 })}</button>}{imgs && imgs.length > 1 && <div className="av-minidots">{imgs.map((_, i) => <i key={i} className={idx === i ? "on" : ""} onClick={(e) => goDot(e, i)} />)}</div>}</div>
       <div className="av-cardbody"><span className="av-cat">{p.category}</span><span className="av-name">{p.name}</span><div className="av-rate">{p.reviews > 0 ? <><Stars v={p.rating} size={11} /><span>{p.rating}</span><span className="c">({p.reviews})</span></> : <span className="c">Nuevo</span>}</div><div className="av-priceline"><span className="av-price">{CLP(p.price)}</span>{p.was && <span className="av-was">{CLP(p.was)}</span>}{p.was && <span className="av-off">-{pct}%</span>}</div></div>
     </div>
   );
@@ -1084,6 +1091,12 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   useEffect(() => { const list = product.variants.filter((v) => v.color === color); if (!list.some((v) => v.size === size)) setSize(list[0]?.size); }, [color]); // eslint-disable-line
   const variant = product.variants.find((v) => v.color === color && v.size === size);
   const stock = variant?.stock ?? 0; const pct = off(product.price, product.was);
+  const out = isSoldOut(product);
+  const [waitOpen, setWaitOpen] = useState(false);
+  const [contact, setContact] = useState("");
+  const [notified, setNotified] = useState(false);
+  const submitWait = async () => { if (!contact.trim()) return; try { await joinWaitlist(product.id, contact.trim()); setNotified(true); } catch (e) { alert(e.message); } };
+  const alts = (() => { const a = all.filter((p) => p.id !== product.id && !isSoldOut(p) && p.category === product.category); return (a.length ? a : all.filter((p) => p.id !== product.id && !isSoldOut(p))).slice(0, 4); })();
   const related = (() => { const r = all.filter((p) => p.id !== product.id && p.category === product.category); return r.length ? r.slice(0, 5) : all.filter((p) => p.id !== product.id).slice(0, 5); })();
   const hasImg = product.images && product.images.length;
   const slides = hasImg ? product.images : [product.g, [product.g[1], product.g[0]], ["#F2F2F6", product.g[0]]];
@@ -1097,7 +1110,8 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   }, [paused, slides.length]);
   return (
     <div className="av-anim av-pad">
-      <div className="av-gallery" style={hasImg ? imgBg(slides[slide]) : grad(slides[slide][0], slides[slide][1])} onTouchStart={galStart} onTouchEnd={galEnd}>
+      <div className="av-gallery" style={hasImg ? imgBg(slides[slide]) : grad(slides[slide][0], slides[slide][1])} onTouchStart={galStart} onTouchEnd={galEnd} aria-label={out ? "Producto agotado" : undefined}>
+        {out && <SoldLayer />}
         <button className="av-back" onClick={onBack}>{I.back()}</button>
         <button className={"av-dheart" + (fav ? " on" : "")} onClick={onFav}>{I.heart(fav)({ width: 19, height: 19 })}</button>
         {!hasImg && <span>{product.emoji}</span>}
@@ -1120,6 +1134,12 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         <div style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: stock === 0 ? "var(--muted)" : stock <= 3 ? "var(--hot)" : "var(--ok)" }}>{stock === 0 ? "Sin stock en esta combinación" : stock <= 3 ? `¡Solo quedan ${stock}!` : `${stock} disponibles`}</div>
         {product.benefits?.length > 0 && <ul className="av-benefits">{product.benefits.map((b, i) => <li key={i}>{I.check()}<span>{b}</span></li>)}</ul>}
         {product.desc && <p className="av-desc">{product.desc}</p>}
+        {out && alts.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div className="av-vlabel" style={{ color: "var(--accent)" }}>Disponibles ahora</div>
+            <div className="av-relrow">{alts.map((p) => (<div key={p.id} className="av-relcard" onClick={() => openRelated(p.id)}><div className="av-relthumb" style={mediaStyle(p)}>{!(p.images && p.images.length) && p.emoji}</div><div className="av-name" style={{ marginTop: 7 }}>{p.name}</div><div className="av-price" style={{ fontSize: 13, marginTop: 4 }}>{CLP(p.price)}</div></div>))}</div>
+          </div>
+        )}
       </div>
       <div className="av-divider" />
       <div className="av-shead" style={{ paddingBottom: 6 }}><h3>Opiniones</h3></div>
@@ -1128,7 +1148,18 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
       {product.reviews > 0 && POOL.slice(0, 3).map((rv, i) => (<div key={i} className="av-review"><div className="av-revname">{rv.name} <span style={{ marginLeft: "auto" }}><Stars v={rv.r} size={12} /></span></div><div className="av-revtext">{rv.t}</div></div>))}
       {related.length > 0 && (<><div className="av-divider" /><div className="av-shead" style={{ paddingBottom: 6 }}><h3>También te puede gustar</h3></div><div className="av-relrow">{related.map((p) => (<div key={p.id} className="av-relcard" onClick={() => openRelated(p.id)}><div className="av-relthumb" style={mediaStyle(p)}>{!(p.images && p.images.length) && p.emoji}</div><div className="av-name" style={{ marginTop: 7 }}>{p.name}</div><div className="av-price" style={{ fontSize: 13, marginTop: 4 }}>{CLP(p.price)}</div></div>))}</div></>)}
       <div style={{ height: 8 }} />
-      <div className="av-bottombar"><button className="av-btn primary" disabled={stock === 0} onClick={() => onAdd(product, variant, 1)}>{I.bag({ width: 18, height: 18 })} {stock === 0 ? "Sin stock" : "Agregar — " + CLP(product.price)}</button><a href={waLink} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none" }}>{I.wa()}</a></div>
+      <div className="av-bottombar">
+        {!out ? (
+          <button className="av-btn primary" disabled={stock === 0} onClick={() => onAdd(product, variant, 1)}>{I.bag({ width: 18, height: 18 })} {stock === 0 ? "Sin stock" : "Agregar — " + CLP(product.price)}</button>
+        ) : notified ? (
+          <div className="av-btn primary" style={{ background: "var(--ok)", cursor: "default" }}>{I.check()} Te avisaremos cuando vuelva</div>
+        ) : waitOpen ? (
+          <div style={{ display: "flex", gap: 8, flex: 1 }}><input className="av-input" autoFocus value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Tu WhatsApp o correo" /><button className="av-btn primary" style={{ flex: "none", padding: "0 18px" }} disabled={!contact.trim()} onClick={submitWait}>Avisarme</button></div>
+        ) : (
+          <button className="av-btn primary" onClick={() => setWaitOpen(true)}>{I.bell ? I.bell({ width: 18, height: 18 }) : null} Avísame cuando vuelva</button>
+        )}
+        <a href={waLink} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none" }}>{I.wa()}</a>
+      </div>
     </div>
   );
 }
@@ -1277,10 +1308,10 @@ function SellerShowcase({ store, products, onUpdateStore, onToggle, onSetOffer, 
       {products.map((p, idx) => (
         <div key={p.id} className="av-merch">
           <div className="av-move"><button onClick={() => move(idx, -1)} disabled={idx === 0}>▲</button><button onClick={() => move(idx, 1)} disabled={idx === products.length - 1}>▼</button></div>
-          <div className="av-linethumb" style={{ ...mediaStyle(p), width: 44, height: 44, fontSize: 20 }}>{!(p.images && p.images.length) && p.emoji}</div>
+          <div className="av-linethumb" style={{ ...mediaStyle(p), width: 44, height: 44, fontSize: 20, position: "relative" }}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="av-name">{p.name}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span>{p.was && <span className="av-was" style={{ fontSize: 11 }}>{CLP(p.was)}</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span>{p.was && <span className="av-was" style={{ fontSize: 11 }}>{CLP(p.was)}</span>}{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div>
             <div style={{ display: "flex", gap: 6, marginTop: 7 }}><button className={"av-minitag" + (p.featured ? " on" : "")} onClick={() => onToggle(p.id, "featured")}>Destacado</button><button className={"av-minitag gold" + (p.top ? " on" : "")} onClick={() => onToggle(p.id, "top")}>★ Más vendido</button></div>
             <div className="av-stepchips">{OFFER_OPTS.map((o) => <button key={o} className={"av-stepchip" + ((p.offerPct || 0) === o ? " on" : "")} onClick={() => onSetOffer(p.id, o)}>{o === 0 ? "Sin oferta" : "-" + o + "%"}</button>)}</div>
           </div>
@@ -1346,7 +1377,7 @@ function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onAddC
       {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Desliza un producto hacia la izquierda para editarlo o eliminarlo.</p>}
       {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); return (
         <SwipeRow key={p.id} onEdit={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
-          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21 }}>{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
+          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative" }}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
         </SwipeRow>
       ); })}
     </div>
@@ -1377,7 +1408,9 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
     emoji: product.emoji || "👕",
     benefits: (product.benefits || []).join("\n"),
     desc: product.desc || "",
+    soldOut: !!product.soldOutManual,
   });
+  const editHasSizes = product.variants.some((v) => v.size && v.size !== "Única");
   const up = (k, v) => setF({ ...f, [k]: v });
   // fotos: existentes (url) + nuevas (file). Máx. 6, reordenables.
   const [aud, setAud] = useState(product.audience || []);
@@ -1415,6 +1448,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
         emoji: f.emoji,
         description: f.desc,
         benefits: f.benefits.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3),
+        sold_out_manual: f.soldOut,
         normal_price: Number(f.price),
         images: finalImages,
       });
@@ -1460,6 +1494,12 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
       </div>
       <div className="av-field"><label>Beneficios (uno por línea, máx. 3)</label><textarea className="av-input" rows={3} value={f.benefits} onChange={(e) => up("benefits", e.target.value)} style={{ resize: "none", fontFamily: "inherit" }} /></div>
       <div className="av-field"><label>Descripción</label><textarea className="av-input" rows={3} value={f.desc} onChange={(e) => up("desc", e.target.value)} placeholder="Describe el producto…" style={{ resize: "none", fontFamily: "inherit" }} /></div>
+      {!editHasSizes && (
+        <div className="av-srow2" style={{ borderTop: "1px solid var(--line)", borderBottom: 0, marginTop: 4 }}>
+          <div style={{ flex: 1 }}><div className="av-name">Marcar como agotado</div><div className="av-cat" style={{ marginTop: 2 }}>{f.soldOut ? "Se muestra agotado aunque tengas stock" : "Se agota solo cuando el stock llega a 0"}</div></div>
+          <button className={"av-toggle" + (f.soldOut ? " on" : "")} onClick={() => up("soldOut", !f.soldOut)}><span className="kn" /></button>
+        </div>
+      )}
       <div className="av-bottombar"><button className="av-btn ghost" style={{ flex: "none", padding: "15px 18px" }} onClick={onCancel}>Cancelar</button><button className="av-btn primary" disabled={!valid} onClick={save}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>
     </div>
   );
@@ -1977,6 +2017,18 @@ const AUD_GROUPS = [
 ];
 const audName = (a) => (AUDIENCES.find(([k]) => k === a) || [a, a])[1];
 const CAT_PRESETS = ["Camisetas", "Calcetines", "Pantys", "Bufandas", "Pantalones", "Ropa interior", "Pijamas", "Abrigos", "Accesorios"];
+
+// ----- Estado "Agotado" -----
+const URGENCIA_STOCK_BAJO = true; // muestra "Últimas unidades" cuando el stock es bajo (≤3)
+const totalStock = (p) => p.variants.reduce((s, v) => s + v.stock, 0);
+const isSoldOut = (p) => !!p.soldOutManual || totalStock(p) === 0;
+function SoldLayer({ sm, chip = true }) {
+  return (
+    <div className={"av-soldlayer" + (sm ? " sm" : "")} role="img" aria-label="Producto agotado">
+      {chip && <span className="av-soldchip">Agotado</span>}
+    </div>
+  );
+}
 const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta RUT", "Chequera Electrónica", "Cuenta de Ahorro"];
 
 function PageWrap({ title, children }) {

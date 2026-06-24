@@ -111,6 +111,12 @@ export async function verifyPassword(password) {
   return true;
 }
 
+// Lista de espera: el comprador deja su contacto para avisarle cuando un producto vuelva
+export async function joinWaitlist(productId, contact) {
+  const { error } = await supabase.from("waitlist").insert({ product_id: productId, contact });
+  if (error) throw error;
+}
+
 // Para el enlace público de comprador (sin login): una tienda por id, o la primera si no se indica id
 export async function getStorePublic(storeId, host) {
   // 1. Por id o slug explícito (?tienda=...)
