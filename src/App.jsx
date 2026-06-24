@@ -356,6 +356,12 @@ const CSS = `
 .av-photomove button:disabled{opacity:.3;cursor:default;}
 .av-photomain{position:absolute;top:4px;left:4px;background:var(--accent);color:#fff;font-size:8.5px;font-weight:700;padding:2px 5px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-photo.soldph{filter:grayscale(.5);opacity:.62;}
+.av-catgroup{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:10px;}
+.av-catgrouphead{font-weight:700;font-size:14.5px;letter-spacing:-.01em;margin-bottom:9px;}
+.av-catsubs{display:flex;flex-wrap:wrap;gap:7px;}
+.av-catsub{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink2);}
+.av-catsub b{background:var(--accent-soft);color:var(--accent);font-size:11px;padding:1px 7px;border-radius:999px;}
+.av-catprod{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:8px;}
 .av-photoout{position:absolute;top:4px;left:4px;background:rgba(26,24,32,.78);color:#fff;font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-colorchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .av-colorchip{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;background:#fff;}
@@ -460,6 +466,7 @@ const I = {
   bank: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 10 9-6 9 6"/><path d="M21 10H3"/><path d="M5 10v9"/><path d="M9 10v9"/><path d="M15 10v9"/><path d="M19 10v9"/><path d="M3 21h18"/></svg>),
   cash: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4"/><path d="M18 10v4"/></svg>),
   bell: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>),
+  tag: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12.6 2.6 21 11a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0L2.6 12.6A2 2 0 0 1 2 11.2V4a2 2 0 0 1 2-2h7.2a2 2 0 0 1 1.4.6z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>),
   check: (p) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
   shield: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>),
   truck: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>),
@@ -1257,6 +1264,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
   const menu = [
     { k: "vista", l: "Vista previa", ic: "eye", subs: ["Vista previa del catálogo"] },
     { k: "stock", l: "Stock", ic: "box", subs: ["Existencias y cantidades"] },
+    { k: "categorias", l: "Categorías del menú", ic: "tag", subs: ["Público de cada producto", "Renombrar categorías"] },
     { k: "marca", l: "Marca", ic: "palette", subs: ["Nombre y logo", "Encabezado", "Apariencia de la tienda", "Carrusel de ofertas"] },
     { k: "seguridad", l: "Seguridad", ic: "shield", subs: ["Biometría (Face ID / huella)"] },
     { k: "pagos", l: "Métodos de pago", ic: "card", subs: ["Mercado Pago", "Datos bancarios"] },
@@ -1299,6 +1307,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
         {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onSetSoldOut={onSetSoldOut} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onAddColor={onAddColor} onSetStock={onSetStock} storeId={store.id} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
+        {tab === "categorias" && <SellerCategories products={products} onEdit={onEditProduct} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
         {tab === "seguridad" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="seguridad" onGo={go} />}
@@ -1307,6 +1316,68 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
         {tab === "avisos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="avisos" onGo={go} />}
       </div>
     </>
+  );
+}
+
+function SellerCategories({ products, onEdit }) {
+  const [renaming, setRenaming] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const allCats = Array.from(new Set(products.map((p) => p.category || "General"))).sort((a, b) => a.localeCompare(b));
+  const catsInGroup = (g) => Array.from(new Set(products.filter((p) => p.active && (p.audience || []).some((a) => g.auds.includes(a))).map((p) => p.category || "General"))).sort((a, b) => a.localeCompare(b));
+  const countCat = (g, cat) => products.filter((p) => p.active && (p.audience || []).some((a) => g.auds.includes(a)) && (p.category || "General") === cat).length;
+  const sinPublico = products.filter((p) => !(p.audience || []).length);
+  const toggleAud = (p, key) => { const cur = p.audience || []; onEdit(p.id, { audience: cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key] }); };
+  const doRename = async () => {
+    const to = newName.trim(); if (!to || !renaming) return;
+    setBusy(true);
+    const ids = products.filter((p) => (p.category || "General") === renaming).map((p) => p.id);
+    try { for (const id of ids) await onEdit(id, { category: to }); } catch (e) { alert(e.message); }
+    setBusy(false); setRenaming(null); setNewName("");
+  };
+  return (
+    <div className="av-anim av-pad">
+      <div className="av-pagehead" style={{ paddingTop: 4 }}><span className="av-pagetitle">Categorías del menú</span></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 0 }}>Así ven los compradores tu tienda en el menú lateral. Ajusta el público de cada producto y los nombres de las categorías.</p>
+      {AUD_GROUPS.map((g) => { const cats = catsInGroup(g); return (
+        <div key={g.key} className="av-catgroup">
+          <div className="av-catgrouphead">{g.label}</div>
+          {cats.length === 0 ? <div className="av-hint" style={{ margin: 0, textAlign: "left" }}>Sin productos aquí todavía.</div>
+            : <div className="av-catsubs">{cats.map((c) => <span key={c} className="av-catsub">{c}<b>{countCat(g, c)}</b></span>)}</div>}
+        </div>
+      ); })}
+      {sinPublico.length > 0 && <p className="av-hint" style={{ textAlign: "left" }}>⚠ {sinPublico.length} producto(s) sin público asignado no aparecen en el menú. Asígnalos más abajo.</p>}
+
+      <div className="av-divider" />
+      <div className="av-shead" style={{ paddingBottom: 6 }}><h3>Renombrar categorías</h3></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 0 }}>Cambia el nombre de una categoría en todos sus productos a la vez.</p>
+      {allCats.map((c) => (
+        <div key={c} className="av-srow2" style={{ borderBottom: 0, gap: 8 }}>
+          {renaming === c ? (<>
+            <input className="av-input" autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={c} style={{ flex: 1 }} />
+            <button className="av-btn primary" style={{ flex: "none", padding: "0 15px" }} disabled={busy || !newName.trim()} onClick={doRename}>{busy ? "…" : "Guardar"}</button>
+            <button className="av-btn ghost" style={{ flex: "none", padding: "0 13px" }} onClick={() => { setRenaming(null); setNewName(""); }}>Cancelar</button>
+          </>) : (<>
+            <div style={{ flex: 1 }}><div className="av-name">{c}</div><div className="av-cat" style={{ marginTop: 2 }}>{products.filter((p) => (p.category || "General") === c).length} producto(s)</div></div>
+            <button className="av-minitag" onClick={() => { setRenaming(c); setNewName(c); }}>Renombrar</button>
+          </>)}
+        </div>
+      ))}
+
+      <div className="av-divider" />
+      <div className="av-shead" style={{ paddingBottom: 6 }}><h3>Público de cada producto</h3></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 0 }}>Marca para quién es cada producto: define en qué parte del menú aparece.</p>
+      {products.map((p) => (
+        <div key={p.id} className="av-catprod">
+          <div className="av-linethumb" style={{ ...mediaStyle(p), width: 42, height: 42, fontSize: 18, flex: "none" }}>{!(p.images && p.images.length) && p.emoji}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="av-name">{p.name}</div>
+            <div className="av-cat" style={{ marginTop: 1 }}>{p.category || "General"}</div>
+            <div className="av-stepchips" style={{ marginTop: 7 }}>{AUDIENCES.map(([k, l]) => <button key={k} className={"av-stepchip" + ((p.audience || []).includes(k) ? " on" : "")} onClick={() => toggleAud(p, k)}>{l}</button>)}</div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
