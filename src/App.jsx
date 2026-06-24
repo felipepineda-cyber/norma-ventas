@@ -355,6 +355,8 @@ const CSS = `
 .av-photomove button{width:22px;height:22px;border-radius:7px;border:0;background:rgba(20,20,28,.72);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:grid;place-items:center;}
 .av-photomove button:disabled{opacity:.3;cursor:default;}
 .av-photomain{position:absolute;top:4px;left:4px;background:var(--accent);color:#fff;font-size:8.5px;font-weight:700;padding:2px 5px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
+.av-photo.soldph{filter:grayscale(.5);opacity:.62;}
+.av-photoout{position:absolute;top:4px;left:4px;background:rgba(26,24,32,.78);color:#fff;font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-colorchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .av-colorchip{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;background:#fff;}
 .av-colordot{width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 1px var(--line);flex:none;}
@@ -420,6 +422,7 @@ function mapProduct(row) {
     price: row.price, was: row.was, featured: !!row.featured, top: !!row.top, active: row.active !== false,
     isNew: !!row.is_new, rating: Number(row.rating) || 0, reviews: row.reviews_count || 0, g: gradFor(row.id),
     soldOutManual: !!row.sold_out_manual,
+    soldImages: row.sold_images || [],
     variants: (row.variants || []).map((v) => ({ id: v.id, color: v.color, hex: v.hex, size: v.size, stock: v.stock }))
       .sort((a, b) => a.color.localeCompare(b.color) || String(a.size).localeCompare(String(b.size))),
   };
@@ -1053,9 +1056,11 @@ function Favs({ products, favs, toggleFav, open, goHome }) {
 }
 function Card({ p, fav, onFav, onClick, preview }) {
   const stock = p.variants.reduce((s, v) => s + v.stock, 0);
-  const low = stock > 0 && stock <= 3; const pct = off(p.price, p.was); const hasImg = p.images && p.images.length;
+  const low = stock > 0 && stock <= 3; const pct = off(p.price, p.was);
   const out = isSoldOut(p);
-  const imgs = hasImg ? p.images : null;
+  const av = availImages(p);
+  const imgs = av.length ? av : (p.images && p.images.length ? [p.images[0]] : null);
+  const hasImg = !!imgs;
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const startX = useRef(null); const moved = useRef(false);
@@ -1110,7 +1115,9 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const alts = (() => { const a = all.filter((p) => p.id !== product.id && !isSoldOut(p) && p.category === product.category); return (a.length ? a : all.filter((p) => p.id !== product.id && !isSoldOut(p))).slice(0, 4); })();
   const related = (() => { const r = all.filter((p) => p.id !== product.id && p.category === product.category); return r.length ? r.slice(0, 5) : all.filter((p) => p.id !== product.id).slice(0, 5); })();
   const hasImg = product.images && product.images.length;
-  const slides = hasImg ? product.images : [product.g, [product.g[1], product.g[0]], ["#F2F2F6", product.g[0]]];
+  const avImgs = availImages(product);
+  const baseImgs = avImgs.length ? avImgs : (hasImg ? [product.images[0]] : null);
+  const slides = baseImgs ? baseImgs : [product.g, [product.g[1], product.g[0]], ["#F2F2F6", product.g[0]]];
   const variantLabel = [hasColors ? color : null, hasSizes && size !== "Única" ? size : null].filter(Boolean).join(" / ");
   const waMsg = `Hola ${store.name}, me interesa *${product.name}*${variantLabel ? " (" + variantLabel + ")" : ""} a ${CLP(product.price)}. ¿Está disponible?`;
   const waLink = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(waMsg)}`;
@@ -1130,8 +1137,8 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         {slides.length > 1 && <><button className="av-galnav" style={{ left: 12 }} onClick={() => galGo(-1)}>{I.back()}</button><button className="av-galnav" style={{ right: 12, transform: "translateY(-50%) scaleX(-1)" }} onClick={() => galGo(1)}>{I.back()}</button></>}
         {slides.length > 1 && <div className="av-dots">{slides.map((_, i) => <i key={i} className={slide === i ? "on" : ""} onClick={() => galPick(i)} />)}</div>}
       </div>
-      {hasImg && product.images.length > 1 && (
-        <div className="av-thumbs">{product.images.map((src, i) => (<button key={i} className={"av-thumbmini" + (slide === i ? " on" : "")} style={imgBg(src)} onClick={() => galPick(i)} aria-label={"foto " + (i + 1)} />))}</div>
+      {hasImg && baseImgs.length > 1 && (
+        <div className="av-thumbs">{baseImgs.map((src, i) => (<button key={i} className={"av-thumbmini" + (slide === i ? " on" : "")} style={imgBg(src)} onClick={() => galPick(i)} aria-label={"foto " + (i + 1)} />))}</div>
       )}
       <div className="av-sec">
         <span className="av-cat">{product.category}</span><h1 className="av-h1">{product.name}</h1>
@@ -1379,7 +1386,6 @@ function SwipeRow({ onEdit, onDelete, onTap, children }) {
 function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, onEdit, onAddColor, onSetStock, storeId }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [availMenu, setAvailMenu] = useState(null); // { id, x, y } o null
   if (adding) return <AddProduct onCancel={() => setAdding(false)} onCreate={onCreate} />;
   if (editing) { const live = products.find((p) => p.id === editing.id) || editing; return <EditProduct product={live} storeId={storeId} onCancel={() => setEditing(null)} onSave={onEdit} onSetStock={onSetStock} onAddColor={onAddColor} />; }
   return (
@@ -1387,18 +1393,11 @@ function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, 
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
       {products.length === 0 && <div className="av-empty">Aún no tienes productos. Toca “Agregar producto”.</div>}
       {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Toca un producto para editarlo, o deslízalo hacia la izquierda para editar o eliminar.</p>}
-      {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); const noSize = !p.variants.some((v) => v.size && v.size !== "Única"); return (
+      {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); return (
         <SwipeRow key={p.id} onEdit={() => setEditing(p)} onTap={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
-          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative", cursor: noSize ? "pointer" : undefined }} title={noSize ? "Tocar para marcar disponible / no disponible" : undefined} onClick={noSize ? (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setAvailMenu(availMenu && availMenu.id === p.id ? null : { id: p.id, x: Math.min(r.left, window.innerWidth - 184), y: r.bottom + 6 }); } : undefined}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
+          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative" }}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
         </SwipeRow>
       ); })}
-      {availMenu && (() => { const p = products.find((x) => x.id === availMenu.id); if (!p) return null; const out = isSoldOut(p); return (<>
-        <div onClick={() => setAvailMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 60 }} />
-        <div className="av-availmenu" style={{ position: "fixed", left: availMenu.x, top: availMenu.y, zIndex: 61 }} onClick={(e) => e.stopPropagation()}>
-          <button className={!out ? "on" : ""} onClick={() => { onSetSoldOut(p.id, false); setAvailMenu(null); }}><span className="dot ok" />Disponible</button>
-          <button className={out ? "on" : ""} onClick={() => { onSetSoldOut(p.id, true); setAvailMenu(null); }}><span className="dot off" />No disponible</button>
-        </div>
-      </>); })()}
     </div>
   );
 }
@@ -1433,9 +1432,11 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
   // fotos: existentes (url) + nuevas (file). Máx. 6, reordenables.
   const [aud, setAud] = useState(product.audience || []);
   const [newColor, setNewColor] = useState({ name: "", hex: "#F5A9C8" });
-  const [photos, setPhotos] = useState(() => (product.images || []).map((url) => ({ url, file: null })));
-  const onPhotos = (e) => { const fs = [...(e.target.files || [])]; setPhotos((ps) => [...ps, ...fs.map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, MAXP)); e.target.value = ""; };
+  const [photos, setPhotos] = useState(() => (product.images || []).map((url) => ({ url, file: null, sold: (product.soldImages || []).includes(url) })));
+  const [photoMenu, setPhotoMenu] = useState(null); // { i, x, y } o null
+  const onPhotos = (e) => { const fs = [...(e.target.files || [])]; setPhotos((ps) => [...ps, ...fs.map((file) => ({ url: URL.createObjectURL(file), file, sold: false }))].slice(0, MAXP)); e.target.value = ""; };
   const delPhoto = (i) => setPhotos((ps) => ps.filter((_, x) => x !== i));
+  const setPhotoSold = (i, sold) => setPhotos((ps) => ps.map((p, x) => (x === i ? { ...p, sold } : p)));
   const movePhoto = (i, dir) => setPhotos((ps) => { const j = i + dir; if (j < 0 || j >= ps.length) return ps; const a = [...ps]; [a[i], a[j]] = [a[j], a[i]]; return a; });
   // copia editable del stock por variante
   const [stocks, setStocks] = useState(() => Object.fromEntries(product.variants.map((v) => [v.id, v.stock])));
@@ -1459,6 +1460,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
       if (newFiles.length) uploaded = await uploadProductImages(storeId, newFiles);
       let ui = 0;
       const finalImages = photos.map((p) => (p.file ? uploaded[ui++] : p.url));
+      const soldImages = finalImages.filter((_, i) => photos[i].sold);
       await onSave(product.id, {
         name: f.name.trim(),
         category: f.category.trim() || "General",
@@ -1469,6 +1471,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
         sold_out_manual: f.soldOut,
         normal_price: Number(f.price),
         images: finalImages,
+        sold_images: soldImages,
       });
       // aplica los cambios de stock que hayan variado
       product.variants.forEach((v) => { if (stocks[v.id] !== v.stock && onSetStock) onSetStock(v.id, product.id, stocks[v.id]); });
@@ -1479,11 +1482,13 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
     <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
       <div className="av-pagehead" style={{ paddingTop: 0 }}><button className="av-back" style={{ position: "static" }} onClick={onCancel}>{I.back()}</button><span className="av-pagetitle">Editar producto</span></div>
       <div className="av-field"><label>Fotos del producto (máx. 8)</label>
+        <p className="av-hint" style={{ textAlign: "left", margin: "0 0 8px" }}>Toca una foto para marcarla <b>Disponible</b> o <b>No disponible</b>. Las no disponibles no se muestran en la tienda.</p>
         <div className="av-photos">
           {photos.map((im, i) => (
             <div key={i} className="av-photowrap">
-              <img src={im.url} className="av-photo" alt={"foto " + (i + 1)} />
-              {i === 0 && <span className="av-photomain">Principal</span>}
+              <img src={im.url} className={"av-photo" + (im.sold ? " soldph" : "")} alt={(im.sold ? "no disponible · " : "") + "foto " + (i + 1)} style={{ cursor: "pointer" }} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPhotoMenu(photoMenu && photoMenu.i === i ? null : { i, x: Math.min(r.left, window.innerWidth - 184), y: r.bottom + 6 }); }} />
+              {im.sold && <span className="av-photoout">No disp.</span>}
+              {i === 0 && !im.sold && <span className="av-photomain">Principal</span>}
               <button className="av-photodel" onClick={() => delPhoto(i)}>×</button>
               <div className="av-photomove"><button disabled={i === 0} onClick={() => movePhoto(i, -1)}>‹</button><button disabled={i === photos.length - 1} onClick={() => movePhoto(i, 1)}>›</button></div>
             </div>
@@ -1492,6 +1497,13 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
         </div>
         <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>La primera foto es la principal. Usa ‹ › para reordenar y × para borrar. Si no dejas ninguna, se usa el ícono de respaldo.</p>
       </div>
+      {photoMenu && photos[photoMenu.i] && (<>
+        <div onClick={() => setPhotoMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 60 }} />
+        <div className="av-availmenu" style={{ position: "fixed", left: photoMenu.x, top: photoMenu.y, zIndex: 61 }} onClick={(e) => e.stopPropagation()}>
+          <button className={!photos[photoMenu.i].sold ? "on" : ""} onClick={() => { setPhotoSold(photoMenu.i, false); setPhotoMenu(null); }}><span className="dot ok" />Disponible</button>
+          <button className={photos[photoMenu.i].sold ? "on" : ""} onClick={() => { setPhotoSold(photoMenu.i, true); setPhotoMenu(null); }}><span className="dot off" />No disponible</button>
+        </div>
+      </>)}
       <div className="av-field"><label>Ícono de respaldo</label><div className="av-emojirow">{EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (f.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
       <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
       <ProdMeta aud={aud} setAud={setAud} cat={f.category} setCat={(v) => up("category", v)} />
@@ -2037,7 +2049,8 @@ const CAT_PRESETS = ["Camisetas", "Calcetines", "Pantys", "Bufandas", "Pantalone
 // ----- Estado "Agotado" -----
 const URGENCIA_STOCK_BAJO = true; // muestra "Últimas unidades" cuando el stock es bajo (≤3)
 const totalStock = (p) => p.variants.reduce((s, v) => s + v.stock, 0);
-const isSoldOut = (p) => !!p.soldOutManual || totalStock(p) === 0;
+const availImages = (p) => (p.images || []).filter((u) => !(p.soldImages || []).includes(u));
+const isSoldOut = (p) => !!p.soldOutManual || totalStock(p) === 0 || ((p.images?.length > 0) && availImages(p).length === 0);
 function SoldLayer({ sm, chip = true }) {
   return (
     <div className={"av-soldlayer" + (sm ? " sm" : "")} role="img" aria-label="Producto agotado">
