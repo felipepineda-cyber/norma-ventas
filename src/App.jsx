@@ -35,7 +35,7 @@ const CSS = `
   .av-phone{max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;margin:0;}
   .av-notch{display:none;}
   .av-nav{display:none;}
-  .av-wafab{bottom:26px;right:26px;}
+  .av-wafabwrap{bottom:26px;right:26px;}
   /* Encabezado tipo sitio web: logo + navegación + acciones, centrado */
   .av-top{position:sticky;top:0;padding:0 32px;height:64px;display:flex;align-items:center;gap:20px;justify-content:flex-start;}
   .av-top > .av-store{margin-right:8px;}
@@ -228,10 +228,18 @@ const CSS = `
 .av-btn.primary:disabled{background:#CBCBD8;box-shadow:none;cursor:not-allowed;}
 .av-btn.dark{background:var(--ink);color:#fff;}
 .av-btn.wa{background:var(--wa);color:#fff;flex:none;width:56px;padding:15px 0;}
-.av-wafab{position:absolute;right:14px;bottom:84px;z-index:45;display:flex;align-items:center;gap:9px;background:var(--wa, #25D366);color:#fff;text-decoration:none;padding:8px 15px 8px 8px;border-radius:999px;box-shadow:0 10px 26px -8px rgba(37,211,102,.75);font-size:11.5px;font-weight:600;line-height:1.12;animation:wapop .3s ease;}
+.av-wafab-ov{position:absolute;inset:0;z-index:45;}
+.av-wafabwrap{position:absolute;right:14px;bottom:84px;z-index:46;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+.av-wafab{display:flex;align-items:center;gap:9px;background:var(--wa, #25D366);color:#fff;text-decoration:none;padding:8px 15px 8px 8px;border-radius:999px;box-shadow:0 10px 26px -8px rgba(37,211,102,.75);font-size:11.5px;font-weight:600;line-height:1.12;animation:wapop .3s ease;border:0;cursor:pointer;font-family:inherit;}
 .av-wafab:active{transform:scale(.95);}
 .av-wafabic{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.22);flex:0 0 auto;}
+.av-wafabtx{text-align:left;}
 .av-wafabtx b{font-weight:800;font-size:12.5px;}
+.av-wamenu{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px -12px rgba(20,20,50,.4);padding:8px;display:flex;flex-direction:column;gap:4px;width:248px;animation:wapop .22s ease;}
+.av-wamenuhead{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:7px 10px 5px;}
+.av-waopt{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font-size:13px;font-weight:600;padding:11px 12px;border-radius:12px;background:var(--soft);}
+.av-waopt:hover{background:var(--accent-soft);color:var(--accent);}
+.av-waopt svg{color:var(--wa, #25D366);flex:0 0 auto;}
 @keyframes wapop{from{opacity:0;transform:translateY(8px) scale(.9);}to{opacity:1;transform:none;}}
 .av-btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
 .av-btn.block{width:100%;}
@@ -795,15 +803,35 @@ function Main({ onLogout }) {
 }
 
 /* ============================ COMPRADOR ============================ */
+const WA_MSGS = [
+  { label: "Tengo una duda", text: "¡Hola {store}! Tengo una duda 🙂" },
+  { label: "Consultar stock, tallas y colores", text: "¡Hola {store}! Quiero consultar disponibilidad, tallas o colores de un producto." },
+  { label: "Estado de mi pedido / despacho", text: "¡Hola {store}! Quiero saber el estado de mi pedido o despacho." },
+  { label: "Cambios y devoluciones", text: "¡Hola {store}! Tengo una consulta sobre cambios o devoluciones." },
+];
+
 function WaFab({ store }) {
+  const [open, setOpen] = useState(false);
   if (!store.whatsapp) return null;
-  const msg = `¡Hola ${store.name}! Tengo una duda 🙂`;
-  const link = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(msg)}`;
+  const link = (text) => `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(text.replace("{store}", store.name))}`;
   return (
-    <a href={link} target="_blank" rel="noreferrer" className="av-wafab" title="Escríbenos por WhatsApp">
-      <span className="av-wafabic">{I.wa({ width: 21, height: 21 })}</span>
-      <span className="av-wafabtx">¿Tienes dudas?<br /><b>Escríbenos</b></span>
-    </a>
+    <>
+      {open && <div className="av-wafab-ov" onClick={() => setOpen(false)} />}
+      <div className="av-wafabwrap">
+        {open && (
+          <div className="av-wamenu">
+            <div className="av-wamenuhead">¿En qué te ayudamos?</div>
+            {WA_MSGS.map((m, i) => (
+              <a key={i} href={link(m.text)} target="_blank" rel="noreferrer" className="av-waopt" onClick={() => setOpen(false)}>{I.wa({ width: 15, height: 15 })}<span>{m.label}</span></a>
+            ))}
+          </div>
+        )}
+        <button className="av-wafab" onClick={() => setOpen((o) => !o)} title="Escríbenos por WhatsApp">
+          <span className="av-wafabic">{I.wa({ width: 21, height: 21 })}</span>
+          <span className="av-wafabtx">¿Tienes dudas?<br /><b>Escríbenos</b></span>
+        </button>
+      </div>
+    </>
   );
 }
 
