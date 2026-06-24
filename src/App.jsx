@@ -162,10 +162,17 @@ const CSS = `
 .av-minidots i.on{width:14px;border-radius:999px;background:#fff;}
 .av-galnav{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.82);backdrop-filter:blur(4px);display:grid;place-items:center;cursor:pointer;z-index:2;box-shadow:0 2px 8px -2px rgba(0,0,0,.3);color:var(--ink);}
 .av-galnav:active{transform:translateY(-50%) scale(.92);}
-.av-soldlayer{position:absolute;inset:0;z-index:1;backdrop-filter:grayscale(1);-webkit-backdrop-filter:grayscale(1);box-shadow:inset 0 0 0 3px rgba(255,255,255,.85);border-radius:inherit;pointer-events:none;}
-.av-soldlayer::before{content:"";position:absolute;inset:0;background:linear-gradient(to top right,transparent calc(50% - 1.2px),rgba(75,75,88,.7) 50%,transparent calc(50% + 1.2px));}
-.av-soldlayer.sm{box-shadow:inset 0 0 0 2px rgba(255,255,255,.88);}
-.av-soldchip{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:rgba(26,24,32,.86);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:4px 12px;border-radius:999px;white-space:nowrap;}
+.av-soldlayer{position:absolute;inset:0;z-index:1;background:rgba(116,118,130,.34);backdrop-filter:grayscale(.45);-webkit-backdrop-filter:grayscale(.45);box-shadow:inset 0 0 0 3px rgba(255,255,255,.72);border-radius:inherit;pointer-events:none;}
+.av-soldlayer::before{content:"";position:absolute;inset:0;background:linear-gradient(to top right,transparent calc(50% - 1.2px),rgba(245,245,248,.85) 50%,transparent calc(50% + 1.2px));}
+.av-soldlayer.sm{box-shadow:inset 0 0 0 2px rgba(255,255,255,.78);}
+.av-soldchip{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:rgba(26,24,32,.7);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:4px 12px;border-radius:999px;white-space:nowrap;backdrop-filter:blur(2px);}
+.av-availmenu{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px -12px rgba(20,18,30,.45);padding:5px;min-width:174px;}
+.av-availmenu button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);padding:10px 11px;border-radius:8px;cursor:pointer;text-align:left;}
+.av-availmenu button:active{background:var(--soft);}
+.av-availmenu button.on{color:var(--accent);background:var(--accent-soft);}
+.av-availmenu .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+.av-availmenu .dot.ok{background:var(--ok);}
+.av-availmenu .dot.off{background:var(--muted);}
 .av-thumbs{display:flex;gap:8px;overflow-x:auto;padding:12px 18px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .av-thumbs::-webkit-scrollbar{display:none;}
 .av-thumbmini{flex:0 0 auto;width:54px;height:54px;border-radius:12px;background-size:cover;background-position:center;border:2px solid transparent;cursor:pointer;padding:0;transition:.15s;opacity:.62;}
@@ -725,6 +732,10 @@ function Main({ onLogout }) {
     setProducts((arr) => arr.map((x) => (x.id === id ? { ...x, [key]: !x[key] } : x)));
     try { await updateProduct(id, { [key]: !p[key] }); } catch (e) { alert(e.message); reloadProducts(store.id); }
   };
+  const setSoldOutH = async (id, value) => {
+    setProducts((arr) => arr.map((x) => (x.id === id ? { ...x, soldOutManual: value } : x)));
+    try { await updateProduct(id, { sold_out_manual: value }); } catch (e) { alert(e.message); reloadProducts(store.id); }
+  };
   const setOfferH = async (id, pct) => {
     try { const row = await setOffer(id, pct); const m = mapProduct({ ...row, variants: products.find((x) => x.id === id)?.variants.map((v) => ({ ...v })) || [] }); setProducts((arr) => arr.map((x) => (x.id === id ? { ...x, offerPct: m.offerPct, price: m.price, was: m.was } : x))); }
     catch (e) { alert(e.message); }
@@ -800,7 +811,7 @@ function Main({ onLogout }) {
           {mode === "buyer"
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
             : <Seller store={store} products={products} orders={orders} stockLog={stockLog}
-                onLogout={onLogout} onToggle={toggleProduct} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
+                onLogout={onLogout} onToggle={toggleProduct} onSetSoldOut={setSoldOutH} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
                 onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} onAddColor={addColorH} onEditOrder={editOrderH} onDeleteOrder={deleteOrderH} />}
         </div>
       </div>
@@ -1228,7 +1239,7 @@ function Done({ store, order, onHome }) {
 }
 
 /* ============================ VENDEDOR ============================ */
-function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onAddColor, onEditOrder, onDeleteOrder }) {
+function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSoldOut, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onAddColor, onEditOrder, onDeleteOrder }) {
   const [tab, setTab] = useState("productos");
   const [drawer, setDrawer] = useState(false);
   const [exp, setExp] = useState(() => new Set());
@@ -1279,7 +1290,7 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetOf
       <div className="av-screen">
         <div className="av-tabbar">{tabs.map(([k, l]) => <div key={k} className={"av-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</div>)}</div>
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
-        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onAddColor={onAddColor} onSetStock={onSetStock} storeId={store.id} />}
+        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onSetSoldOut={onSetSoldOut} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onAddColor={onAddColor} onSetStock={onSetStock} storeId={store.id} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
@@ -1365,9 +1376,10 @@ function SwipeRow({ onEdit, onDelete, onTap, children }) {
   );
 }
 
-function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onAddColor, onSetStock, storeId }) {
+function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, onEdit, onAddColor, onSetStock, storeId }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [availMenu, setAvailMenu] = useState(null); // { id, x, y } o null
   if (adding) return <AddProduct onCancel={() => setAdding(false)} onCreate={onCreate} />;
   if (editing) { const live = products.find((p) => p.id === editing.id) || editing; return <EditProduct product={live} storeId={storeId} onCancel={() => setEditing(null)} onSave={onEdit} onSetStock={onSetStock} onAddColor={onAddColor} />; }
   return (
@@ -1375,11 +1387,18 @@ function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onAddC
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
       {products.length === 0 && <div className="av-empty">Aún no tienes productos. Toca “Agregar producto”.</div>}
       {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Toca un producto para editarlo, o deslízalo hacia la izquierda para editar o eliminar.</p>}
-      {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); return (
+      {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); const noSize = !p.variants.some((v) => v.size && v.size !== "Única"); return (
         <SwipeRow key={p.id} onEdit={() => setEditing(p)} onTap={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
-          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative" }}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
+          <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative", cursor: noSize ? "pointer" : undefined }} title={noSize ? "Tocar para marcar disponible / no disponible" : undefined} onClick={noSize ? (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setAvailMenu(availMenu && availMenu.id === p.id ? null : { id: p.id, x: Math.min(r.left, window.innerWidth - 184), y: r.bottom + 6 }); } : undefined}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
         </SwipeRow>
       ); })}
+      {availMenu && (() => { const p = products.find((x) => x.id === availMenu.id); if (!p) return null; const out = isSoldOut(p); return (<>
+        <div onClick={() => setAvailMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 60 }} />
+        <div className="av-availmenu" style={{ position: "fixed", left: availMenu.x, top: availMenu.y, zIndex: 61 }} onClick={(e) => e.stopPropagation()}>
+          <button className={!out ? "on" : ""} onClick={() => { onSetSoldOut(p.id, false); setAvailMenu(null); }}><span className="dot ok" />Disponible</button>
+          <button className={out ? "on" : ""} onClick={() => { onSetSoldOut(p.id, true); setAvailMenu(null); }}><span className="dot off" />No disponible</button>
+        </div>
+      </>); })()}
     </div>
   );
 }
