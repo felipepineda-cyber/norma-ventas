@@ -188,6 +188,7 @@ export async function createProduct(storeId, product, variants) {
       store_id: storeId,
       name: product.name,
       category: product.category,
+      audience: product.audience || [],
       description: product.desc || product.description || "",
       emoji: product.emoji,
       images: product.images || [],
@@ -245,6 +246,14 @@ export async function deleteProduct(productId) {
 }
 
 /* ============================== VARIANTES =========================== */
+
+// Agrega variantes nuevas (p. ej. un color nuevo en todas las tallas del producto)
+export async function addVariants(productId, rows) {
+  if (!rows || !rows.length) return;
+  const payload = rows.map((v) => ({ product_id: productId, color: v.color, hex: v.hex, size: v.size, stock: v.stock || 0 }));
+  const { error } = await supabase.from("variants").insert(payload);
+  if (error) throw error;
+}
 
 export async function updateVariantStock(variantId, stock) {
   const { data, error } = await supabase
