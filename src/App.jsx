@@ -362,6 +362,9 @@ const CSS = `
 .av-catsub{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink2);}
 .av-catsub b{background:var(--accent-soft);color:var(--accent);font-size:11px;padding:1px 7px;border-radius:999px;}
 .av-catprod{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:8px;}
+.av-catx{flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--hot);font-size:13px;cursor:pointer;display:grid;place-items:center;}
+.av-catx:active{transform:scale(.93);}
+.av-catx:disabled{opacity:.4;cursor:default;}
 .av-photoout{position:absolute;top:4px;left:4px;background:rgba(26,24,32,.78);color:#fff;font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-colorchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .av-colorchip{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;background:#fff;}
@@ -1305,9 +1308,9 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
       <div className="av-screen">
         <div className="av-tabbar">{tabs.map(([k, l]) => <div key={k} className={"av-tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</div>)}</div>
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
-        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onSetSoldOut={onSetSoldOut} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onAddColor={onAddColor} onSetStock={onSetStock} storeId={store.id} />}
+        {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onSetSoldOut={onSetSoldOut} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onAddColor={onAddColor} onSetStock={onSetStock} storeId={store.id} cats={store.theme.categories || []} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
-        {tab === "categorias" && <SellerCategories products={products} onEdit={onEditProduct} />}
+        {tab === "categorias" && <SellerCategories products={products} store={store} onEdit={onEditProduct} onUpdateStore={onUpdateStore} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
         {tab === "seguridad" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="seguridad" onGo={go} />}
@@ -1319,20 +1322,39 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
   );
 }
 
-function SellerCategories({ products, onEdit }) {
+function SellerCategories({ products, store, onEdit, onUpdateStore }) {
+  const managed = (store.theme && store.theme.categories) || [];
   const [renaming, setRenaming] = useState(null);
   const [newName, setNewName] = useState("");
+  const [adding, setAdding] = useState("");
   const [busy, setBusy] = useState(false);
-  const allCats = Array.from(new Set(products.map((p) => p.category || "General"))).sort((a, b) => a.localeCompare(b));
+  const inUse = Array.from(new Set(products.map((p) => p.category || "General")));
+  const allCats = Array.from(new Set([...managed, ...inUse])).sort((a, b) => a.localeCompare(b));
   const catsInGroup = (g) => Array.from(new Set(products.filter((p) => p.active && (p.audience || []).some((a) => g.auds.includes(a))).map((p) => p.category || "General"))).sort((a, b) => a.localeCompare(b));
   const countCat = (g, cat) => products.filter((p) => p.active && (p.audience || []).some((a) => g.auds.includes(a)) && (p.category || "General") === cat).length;
+  const countAll = (cat) => products.filter((p) => (p.category || "General") === cat).length;
   const sinPublico = products.filter((p) => !(p.audience || []).length);
+  const saveManaged = (list) => onUpdateStore({ ...store, theme: { ...store.theme, categories: Array.from(new Set(list)) } });
   const toggleAud = (p, key) => { const cur = p.audience || []; onEdit(p.id, { audience: cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key] }); };
+  const addCat = () => { const n = adding.trim(); if (!n) return; if (allCats.some((c) => c.toLowerCase() === n.toLowerCase())) { alert("Esa categoría ya existe."); return; } saveManaged([...managed, n]); setAdding(""); };
+  const removeCat = async (c) => {
+    const n = countAll(c);
+    if (n > 0 && !window.confirm(`"${c}" tiene ${n} producto(s). Se moverán a "General" y la categoría se quitará. ¿Continuar?`)) return;
+    setBusy(true);
+    try {
+      if (n > 0) { const ids = products.filter((p) => (p.category || "General") === c).map((p) => p.id); for (const id of ids) await onEdit(id, { category: "General" }); }
+      saveManaged(managed.filter((x) => x !== c));
+    } catch (e) { alert(e.message); }
+    setBusy(false);
+  };
   const doRename = async () => {
     const to = newName.trim(); if (!to || !renaming) return;
     setBusy(true);
-    const ids = products.filter((p) => (p.category || "General") === renaming).map((p) => p.id);
-    try { for (const id of ids) await onEdit(id, { category: to }); } catch (e) { alert(e.message); }
+    try {
+      const ids = products.filter((p) => (p.category || "General") === renaming).map((p) => p.id);
+      for (const id of ids) await onEdit(id, { category: to });
+      saveManaged([...managed.filter((x) => x !== renaming), to]);
+    } catch (e) { alert(e.message); }
     setBusy(false); setRenaming(null); setNewName("");
   };
   return (
@@ -1349,8 +1371,12 @@ function SellerCategories({ products, onEdit }) {
       {sinPublico.length > 0 && <p className="av-hint" style={{ textAlign: "left" }}>⚠ {sinPublico.length} producto(s) sin público asignado no aparecen en el menú. Asígnalos más abajo.</p>}
 
       <div className="av-divider" />
-      <div className="av-shead" style={{ paddingBottom: 6 }}><h3>Renombrar categorías</h3></div>
-      <p className="av-hint" style={{ textAlign: "left", marginTop: 0 }}>Cambia el nombre de una categoría en todos sus productos a la vez.</p>
+      <div className="av-shead" style={{ paddingBottom: 6 }}><h3>Categorías</h3></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 0 }}>Agrega, renombra o quita categorías. Se reflejan en el menú y como opciones al crear productos.</p>
+      <div className="av-srow2" style={{ borderBottom: 0, gap: 8 }}>
+        <input className="av-input" value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Nueva categoría (ej: Gorros)" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") addCat(); }} />
+        <button className="av-btn primary" style={{ flex: "none", padding: "0 16px" }} disabled={!adding.trim()} onClick={addCat}>Agregar</button>
+      </div>
       {allCats.map((c) => (
         <div key={c} className="av-srow2" style={{ borderBottom: 0, gap: 8 }}>
           {renaming === c ? (<>
@@ -1358,8 +1384,9 @@ function SellerCategories({ products, onEdit }) {
             <button className="av-btn primary" style={{ flex: "none", padding: "0 15px" }} disabled={busy || !newName.trim()} onClick={doRename}>{busy ? "…" : "Guardar"}</button>
             <button className="av-btn ghost" style={{ flex: "none", padding: "0 13px" }} onClick={() => { setRenaming(null); setNewName(""); }}>Cancelar</button>
           </>) : (<>
-            <div style={{ flex: 1 }}><div className="av-name">{c}</div><div className="av-cat" style={{ marginTop: 2 }}>{products.filter((p) => (p.category || "General") === c).length} producto(s)</div></div>
+            <div style={{ flex: 1 }}><div className="av-name">{c}</div><div className="av-cat" style={{ marginTop: 2 }}>{countAll(c)} producto(s)</div></div>
             <button className="av-minitag" onClick={() => { setRenaming(c); setNewName(c); }}>Renombrar</button>
+            {c !== "General" && <button className="av-catx" title="Quitar categoría" disabled={busy} onClick={() => removeCat(c)}>✕</button>}
           </>)}
         </div>
       ))}
@@ -1454,11 +1481,11 @@ function SwipeRow({ onEdit, onDelete, onTap, children }) {
   );
 }
 
-function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, onEdit, onAddColor, onSetStock, storeId }) {
+function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, onEdit, onAddColor, onSetStock, storeId, cats = [] }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(null);
-  if (adding) return <AddProduct onCancel={() => setAdding(false)} onCreate={onCreate} />;
-  if (editing) { const live = products.find((p) => p.id === editing.id) || editing; return <EditProduct product={live} storeId={storeId} onCancel={() => setEditing(null)} onSave={onEdit} onSetStock={onSetStock} onAddColor={onAddColor} />; }
+  if (adding) return <AddProduct onCancel={() => setAdding(false)} onCreate={onCreate} cats={cats} />;
+  if (editing) { const live = products.find((p) => p.id === editing.id) || editing; return <EditProduct product={live} storeId={storeId} onCancel={() => setEditing(null)} onSave={onEdit} onSetStock={onSetStock} onAddColor={onAddColor} cats={cats} />; }
   return (
     <div className="av-anim av-pad">
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
@@ -1473,8 +1500,9 @@ function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, 
   );
 }
 
-function ProdMeta({ aud, setAud, cat, setCat }) {
+function ProdMeta({ aud, setAud, cat, setCat, extraCats = [] }) {
   const toggle = (k) => setAud(aud.includes(k) ? aud.filter((x) => x !== k) : [...aud, k]);
+  const presets = Array.from(new Set([...extraCats, ...CAT_PRESETS]));
   return (
     <>
       <div className="av-field"><label>¿Para quién es? <span style={{ color: "var(--muted)", fontWeight: 400 }}>(elige uno o varios)</span></label>
@@ -1482,13 +1510,13 @@ function ProdMeta({ aud, setAud, cat, setCat }) {
       </div>
       <div className="av-field"><label>Categoría</label>
         <input className="av-input" value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Ej: Calcetines" />
-        <div className="av-stepchips" style={{ marginTop: 8 }}>{CAT_PRESETS.map((c) => <button key={c} className={"av-stepchip" + (cat === c ? " on" : "")} onClick={() => setCat(c)}>{c}</button>)}</div>
+        <div className="av-stepchips" style={{ marginTop: 8 }}>{presets.map((c) => <button key={c} className={"av-stepchip" + (cat === c ? " on" : "")} onClick={() => setCat(c)}>{c}</button>)}</div>
       </div>
     </>
   );
 }
 
-function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColor }) {
+function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColor, cats = [] }) {
   const MAXP = 8;
   const [f, setF] = useState({
     name: product.name || "",
@@ -1577,7 +1605,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
       </>)}
       <div className="av-field"><label>Ícono de respaldo</label><div className="av-emojirow">{EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (f.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
       <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
-      <ProdMeta aud={aud} setAud={setAud} cat={f.category} setCat={(v) => up("category", v)} />
+      <ProdMeta aud={aud} setAud={setAud} cat={f.category} setCat={(v) => up("category", v)} extraCats={cats} />
       <div className="av-field"><label>Precio (CLP) *</label><input className="av-input" type="number" value={f.price} onChange={(e) => up("price", e.target.value)} placeholder="14990" /></div>
       <div className="av-field"><label>Cantidad por color y talla</label>
         {product.variants.map((v) => (
@@ -1604,7 +1632,7 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
   );
 }
 
-function AddProduct({ onCancel, onCreate }) {
+function AddProduct({ onCancel, onCreate, cats = [] }) {
   const MAXP = 8;
   const [f, setF] = useState({ name: "", category: "", price: "", desc: "", emoji: "👕", benefits: "" });
   const up = (k, v) => setF({ ...f, [k]: v });
@@ -1666,7 +1694,7 @@ function AddProduct({ onCancel, onCreate }) {
       </div>
       <div className="av-field"><label>Ícono de respaldo</label><div className="av-emojirow">{EMOJIS.map((e) => <button key={e} className={"av-emojibtn" + (f.emoji === e ? " on" : "")} onClick={() => up("emoji", e)}>{e}</button>)}</div></div>
       <div className="av-field"><label>Nombre *</label><input className="av-input" value={f.name} onChange={(e) => up("name", e.target.value)} placeholder="Ej: Camiseta Bamboo" /></div>
-      <ProdMeta aud={aud} setAud={setAud} cat={f.category} setCat={(v) => up("category", v)} />
+      <ProdMeta aud={aud} setAud={setAud} cat={f.category} setCat={(v) => up("category", v)} extraCats={cats} />
       <div className="av-field"><label>Precio (CLP) *</label><input className="av-input" type="number" value={f.price} onChange={(e) => up("price", e.target.value)} placeholder="14990" /></div>
       <div className="av-field"><label>Colores <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>{colors.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{colors.map((c) => (<span key={c.name} className="av-colorchip"><span className="av-colordot" style={{ background: c.hex }} />{c.name}<button className="av-colordel" onClick={() => delColor(c.name)}>×</button></span>))}</div>}<div className="av-presets">{COLOR_PRESETS.map((c) => <span key={c.name} className="av-presetdot" style={{ background: c.hex }} title={c.name} onClick={() => addColor(c)} />)}</div><div className="av-coloradd"><input className="av-colorpick" type="color" value={pickHex} onChange={(e) => setPickHex(e.target.value)} title="Rueda cromática" /><input className="av-input" style={{ flex: 1, minWidth: 120 }} placeholder="Nombre del color" value={pickName} onChange={(e) => setPickName(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={addCustomColor}>Añadir</button></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Déjalo vacío si el producto no tiene color (ej: electrónica, libros).</p></div>
       <div className="av-field"><label>Tallas <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>{sizes.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{sizes.map((s) => (<span key={s} className="av-colorchip">{s}<button className="av-colordel" onClick={() => delSize(s)}>×</button></span>))}</div>}<div className="av-sizeadd">{SIZE_PRESETS.map((s) => <button key={s} className="av-stepchip" onClick={() => addSize(s)}>+ {s}</button>)}</div><div className="av-coloradd"><input className="av-input" style={{ flex: 1 }} placeholder="Talla personalizada" value={newSize} onChange={(e) => setNewSize(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={() => { addSize(newSize); setNewSize(""); }}>Añadir</button></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Déjalo vacío si el producto no tiene talla (ej: bufandas, accesorios).</p></div>
