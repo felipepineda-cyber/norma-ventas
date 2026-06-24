@@ -1341,7 +1341,7 @@ function SellerInventory({ products, onSetStock }) {
   );
 }
 
-function SwipeRow({ onEdit, onDelete, children }) {
+function SwipeRow({ onEdit, onDelete, onTap, children }) {
   const W = 156;
   const [dx, setDx] = useState(0);
   const dragging = useRef(false);
@@ -1357,8 +1357,8 @@ function SwipeRow({ onEdit, onDelete, children }) {
         <button onClick={() => { close(); onEdit(); }} style={{ flex: 1, border: 0, background: "var(--accent)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "'Space Grotesk',sans-serif" }}>Editar</button>
         <button onClick={() => { close(); onDelete(); }} style={{ flex: 1, border: 0, background: "var(--hot)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "'Space Grotesk',sans-serif" }}>Eliminar</button>
       </div>
-      <div onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={() => { if (!moved.current && dx !== 0) close(); }}
-        style={{ transform: `translateX(${dx}px)`, transition: dragging.current ? "none" : "transform .22s ease", touchAction: "pan-y", position: "relative", zIndex: 1, background: "var(--surface)" }}>
+      <div onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={() => { if (moved.current) return; if (dx !== 0) { close(); } else if (onTap) { onTap(); } }}
+        style={{ transform: `translateX(${dx}px)`, transition: dragging.current ? "none" : "transform .22s ease", touchAction: "pan-y", position: "relative", zIndex: 1, background: "var(--surface)", cursor: onTap ? "pointer" : "default" }}>
         {children}
       </div>
     </div>
@@ -1374,9 +1374,9 @@ function SellerProducts({ products, onToggle, onCreate, onDelete, onEdit, onAddC
     <div className="av-anim av-pad">
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
       {products.length === 0 && <div className="av-empty">Aún no tienes productos. Toca “Agregar producto”.</div>}
-      {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Desliza un producto hacia la izquierda para editarlo o eliminarlo.</p>}
+      {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Toca un producto para editarlo, o deslízalo hacia la izquierda para editar o eliminar.</p>}
       {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); return (
-        <SwipeRow key={p.id} onEdit={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
+        <SwipeRow key={p.id} onEdit={() => setEditing(p)} onTap={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
           <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative" }}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
         </SwipeRow>
       ); })}
@@ -1410,7 +1410,6 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
     desc: product.desc || "",
     soldOut: !!product.soldOutManual,
   });
-  const editHasSizes = product.variants.some((v) => v.size && v.size !== "Única");
   const up = (k, v) => setF({ ...f, [k]: v });
   // fotos: existentes (url) + nuevas (file). Máx. 6, reordenables.
   const [aud, setAud] = useState(product.audience || []);
@@ -1494,12 +1493,10 @@ function EditProduct({ product, storeId, onCancel, onSave, onSetStock, onAddColo
       </div>
       <div className="av-field"><label>Beneficios (uno por línea, máx. 3)</label><textarea className="av-input" rows={3} value={f.benefits} onChange={(e) => up("benefits", e.target.value)} style={{ resize: "none", fontFamily: "inherit" }} /></div>
       <div className="av-field"><label>Descripción</label><textarea className="av-input" rows={3} value={f.desc} onChange={(e) => up("desc", e.target.value)} placeholder="Describe el producto…" style={{ resize: "none", fontFamily: "inherit" }} /></div>
-      {!editHasSizes && (
-        <div className="av-srow2" style={{ borderTop: "1px solid var(--line)", borderBottom: 0, marginTop: 4 }}>
-          <div style={{ flex: 1 }}><div className="av-name">Marcar como agotado</div><div className="av-cat" style={{ marginTop: 2 }}>{f.soldOut ? "Se muestra agotado aunque tengas stock" : "Se agota solo cuando el stock llega a 0"}</div></div>
-          <button className={"av-toggle" + (f.soldOut ? " on" : "")} onClick={() => up("soldOut", !f.soldOut)}><span className="kn" /></button>
-        </div>
-      )}
+      <div className="av-srow2" style={{ borderTop: "1px solid var(--line)", borderBottom: 0, marginTop: 4 }}>
+        <div style={{ flex: 1 }}><div className="av-name">Marcar como agotado</div><div className="av-cat" style={{ marginTop: 2 }}>{f.soldOut ? "Se muestra agotado aunque tengas stock" : "Se agota solo cuando el stock llega a 0"}</div></div>
+        <button className={"av-toggle" + (f.soldOut ? " on" : "")} onClick={() => up("soldOut", !f.soldOut)}><span className="kn" /></button>
+      </div>
       <div className="av-bottombar"><button className="av-btn ghost" style={{ flex: "none", padding: "15px 18px" }} onClick={onCancel}>Cancelar</button><button className="av-btn primary" disabled={!valid} onClick={save}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>
     </div>
   );
