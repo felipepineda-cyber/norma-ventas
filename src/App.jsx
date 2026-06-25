@@ -380,6 +380,14 @@ const CSS = `
 .av-sizetotallabel{flex:0 0 64px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:9px 0;text-align:center;}
 .av-sizetotal .av-input{flex:1;}
 .av-mcell:disabled{opacity:.4;background:var(--soft);cursor:not-allowed;}
+.av-palrow{display:flex;gap:6px;margin-bottom:10px;}
+.av-paldot{width:22px;height:22px;border-radius:7px;border:1px solid var(--line);}
+.av-bggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.av-bgcard{border:1.5px solid var(--line);border-radius:14px;padding:6px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:6px;font-family:inherit;}
+.av-bgcard.on{border-color:var(--accent);}
+.av-bgprev{height:64px;border-radius:10px;overflow:hidden;display:flex;align-items:flex-end;gap:6px;padding:8px;background-size:cover;}
+.av-bgprev span{flex:1;height:24px;background:#fff;border-radius:6px;box-shadow:0 2px 6px -3px rgba(0,0,0,.28);}
+.av-bgname{font-size:12px;font-weight:600;color:var(--ink2);text-align:center;}
 .av-photoout{position:absolute;top:4px;left:4px;background:rgba(26,24,32,.78);color:#fff;font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-colorchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .av-colorchip{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;background:#fff;}
@@ -524,7 +532,7 @@ function styleClass(store) {
 function shopVars(store) {
   const t = store.theme || {};
   const v = {};
-  if (t.bg) { v["--shop-bg"] = t.bg; }
+  if (t.bgDesign) { v["--shop-bg"] = t.bgDesign; } else if (t.bg) { v["--shop-bg"] = t.bg; }
   if (t.cardBorderColor) v["--card-bc"] = t.cardBorderColor;
   if (t.cardBorderWidth != null) v["--card-bw"] = `${t.cardBorderWidth}px`;
   if (t.cardRadius != null) v["--card-rad"] = `${t.cardRadius}px`;
@@ -538,6 +546,59 @@ function StoreLogo({ store, size = 36, radius = 11, fontSize = 19 }) {
   const base = { width: size, height: size, borderRadius: radius, fontSize };
   if (store.logoUrl) return <div className="av-logo" style={{ ...base, backgroundImage: `url(${store.logoUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />;
   return <div className="av-logo" style={{ ...base, ...grad(store.logoA, store.logoB) }}>{store.emoji}</div>;
+}
+
+/* ---- Fondo generado desde el logo ---- */
+function hexA(hex, a) {
+  let h = (hex || "#000000").replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const r = parseInt(h.slice(0, 2), 16) || 0, g = parseInt(h.slice(2, 4), 16) || 0, b = parseInt(h.slice(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${a})`;
+}
+function extractPalette(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const s = 56, cv = document.createElement("canvas"); cv.width = s; cv.height = s;
+        const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0, s, s);
+        const d = ctx.getImageData(0, 0, s, s).data, map = {};
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 130) continue;
+          const r = d[i], g = d[i + 1], b = d[i + 2], key = `${r >> 4},${g >> 4},${b >> 4}`;
+          const m = map[key] || (map[key] = { r: 0, g: 0, b: 0, n: 0 });
+          m.r += r; m.g += g; m.b += b; m.n++;
+        }
+        let arr = Object.values(map).map((m) => { const r = m.r / m.n, g = m.g / m.n, b = m.b / m.n, mx = Math.max(r, g, b), mn = Math.min(r, g, b); return { r: Math.round(r), g: Math.round(g), b: Math.round(b), n: m.n, sat: mx - mn, lum: (r + g + b) / 3 }; });
+        arr = arr.filter((c) => c.lum > 18 && c.lum < 242);
+        arr.sort((a, b) => (b.sat * 1.4 + b.n * 0.04) - (a.sat * 1.4 + a.n * 0.04));
+        const toHex = (c) => "#" + [c.r, c.g, c.b].map((x) => x.toString(16).padStart(2, "0")).join("");
+        const out = [];
+        for (const c of arr) { if (out.every((o) => Math.abs(o.r - c.r) + Math.abs(o.g - c.g) + Math.abs(o.b - c.b) > 60)) out.push(c); if (out.length >= 4) break; }
+        resolve(out.length ? out.map(toHex) : null);
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+async function paletteFromStore(store) {
+  if (store.logoUrl) { const p = await extractPalette(store.logoUrl); if (p && p.length) return p; }
+  return [store.logoA || "#3B2BFF", store.logoB || "#7A4DFF"];
+}
+function bgDesignsFor(palette, logoUrl) {
+  const c1 = palette[0] || "#7A4DFF", c2 = palette[1] || c1, c3 = palette[2] || c2;
+  const list = [
+    { id: "grad", name: "Degradado suave", css: `linear-gradient(160deg, ${hexA(c1, 0.10)} 0%, #FFFFFF 46%, ${hexA(c2, 0.10)} 100%)` },
+    { id: "glow", name: "Brillo superior", css: `radial-gradient(120% 55% at 50% -8%, ${hexA(c1, 0.18)} 0%, #FFFFFF 62%)` },
+    { id: "mesh", name: "Malla de color", css: `radial-gradient(58% 48% at 14% 8%, ${hexA(c1, 0.16)} 0%, transparent 60%), radial-gradient(55% 42% at 88% 2%, ${hexA(c2, 0.15)} 0%, transparent 55%), radial-gradient(70% 60% at 50% 102%, ${hexA(c3, 0.12)} 0%, transparent 60%), #FFFFFF` },
+    { id: "dots", name: "Lunares sutiles", css: `radial-gradient(${hexA(c1, 0.14)} 1.4px, transparent 1.6px) 0 0 / 22px 22px, #FFFFFF` },
+    { id: "diag", name: "Líneas diagonales", css: `repeating-linear-gradient(45deg, ${hexA(c1, 0.06)} 0 2px, transparent 2px 15px), #FFFFFF` },
+    { id: "tint", name: "Tinte de marca", css: `linear-gradient(180deg, ${hexA(c1, 0.09)}, ${hexA(c1, 0.03)})` },
+  ];
+  if (logoUrl) list.push({ id: "mark", name: "Marca de agua", css: `linear-gradient(${hexA("#FFFFFF", 0.93)}, ${hexA("#FFFFFF", 0.93)}), url(${logoUrl}) 0 0 / 76px repeat` });
+  return list;
 }
 
 /* ===================================================================== */
@@ -1444,6 +1505,33 @@ function SellerCategories({ products, store, onEdit, onUpdateStore }) {
   );
 }
 
+function BgFromLogo({ store, current, onPick }) {
+  const [palette, setPalette] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { let on = true; setLoading(true); paletteFromStore(store).then((p) => { if (on) { setPalette(p); setLoading(false); } }); return () => { on = false; }; }, [store.logoUrl, store.logoA, store.logoB]);
+  const designs = palette ? bgDesignsFor(palette, store.logoUrl) : [];
+  return (
+    <div className="av-field">
+      <label>Fondo desde tu logo</label>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Creamos fondos sutiles con los colores de tu logo. Toca uno para aplicarlo a la tienda.</p>
+      {loading ? <div className="av-hint" style={{ textAlign: "left" }}>Leyendo los colores de tu logo…</div> : (
+        <>
+          {palette && <div className="av-palrow">{palette.map((c) => <span key={c} className="av-paldot" style={{ background: c }} title={c} />)}</div>}
+          <div className="av-bggrid">
+            {designs.map((d) => (
+              <button key={d.id} className={"av-bgcard" + (current === d.css ? " on" : "")} onClick={() => onPick(d.css)}>
+                <div className="av-bgprev" style={{ background: d.css }}><span /><span /></div>
+                <span className="av-bgname">{d.name}</span>
+              </button>
+            ))}
+          </div>
+          {current && <button className="av-btn ghost" style={{ marginTop: 10, padding: "9px 14px", fontSize: 13 }} onClick={() => onPick("")}>Quitar fondo</button>}
+        </>
+      )}
+    </div>
+  );
+}
+
 function SellerShowcase({ store, products, onUpdateStore, onToggle, onSetOffer, onSaveOrder }) {
   const [cat, setCat] = useState("Todos");
   const cats = ["Todos", ...Array.from(new Set(products.filter((p) => p.active).map((p) => p.category)))];
@@ -1455,7 +1543,7 @@ function SellerShowcase({ store, products, onUpdateStore, onToggle, onSetOffer, 
       <div className="av-shead" style={{ paddingBottom: 8 }}><h3 style={{ fontSize: 16 }}>Así lo ve tu cliente</h3></div>
       <p className="av-hint" style={{ textAlign: "left", marginTop: -4, marginBottom: 8 }}>El carrusel de ofertas ahora se edita en la pestaña <b>Marca</b>.</p>
       <div className="av-chips" style={{ paddingTop: 0 }}>{cats.map((c) => <button key={c} className={"av-chip" + (cat === c ? " on" : "")} onClick={() => setCat(c)}>{c}</button>)}</div>
-      <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className={"av-prevscroll " + styleClass(store)} style={{ ...shopVars(store), background: store.theme?.bg || undefined }}><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
+      <div className="av-preview"><div className="av-prevlabel">Vista previa del catálogo</div><div className={"av-prevscroll " + styleClass(store)} style={{ ...shopVars(store), background: store.theme?.bgDesign || store.theme?.bg || undefined }}><PromoBanner store={store} />{previewProducts.length === 0 ? <div className="av-empty" style={{ padding: "40px 20px" }}>Sin productos en esta categoría.</div> : <div className="av-grid" style={{ paddingBottom: 18 }}>{previewProducts.map((p) => <Card key={p.id} p={p} preview onClick={() => {}} />)}</div>}</div></div>
       <div className="av-shead" style={{ paddingBottom: 6 }}><h3 style={{ fontSize: 16 }}>Ordenar, destacar y ofertas</h3></div>
       {products.map((p, idx) => (
         <div key={p.id} className="av-merch">
@@ -1964,6 +2052,7 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
             <button className="av-btn ghost" style={{ flex: "none", marginLeft: "auto", padding: "7px 12px", fontSize: 12 }} onClick={() => upT("bg", "#FFFFFF")}>Restablecer</button>
           </div>
         </div>
+        <BgFromLogo store={store} current={t.bgDesign || ""} onPick={(css) => upT("bgDesign", css)} />
         <div className="av-field"><label>Color de letra</label>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <input type="color" className="av-colorpick" value={t.ink || "#000000"} onChange={(e) => upT("ink", e.target.value)} />
