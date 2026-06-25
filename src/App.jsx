@@ -290,6 +290,7 @@ const CSS = `
 .av-drawer{position:absolute;top:0;left:0;bottom:0;width:80%;max-width:320px;background:var(--surface);z-index:81;box-shadow:2px 0 40px rgba(20,20,50,.25);padding:18px 16px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;animation:av-slidein .24s cubic-bezier(.2,.8,.2,1);}
 @keyframes av-slidein{from{transform:translateX(-100%)}to{transform:translateX(0)}}
 @keyframes av-fade{from{opacity:0}to{opacity:1}}
+@keyframes av-slideup{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .av-draweritem{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:12px;border:0;background:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--ink);text-align:left;width:100%;}
 .av-draweritem:hover{background:var(--soft);}
 .av-draweritem.on{background:var(--accent-soft);color:var(--accent);}
@@ -362,6 +363,15 @@ const CSS = `
 .av-catsub{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink2);}
 .av-catsub b{background:var(--accent-soft);color:var(--accent);font-size:11px;padding:1px 7px;border-radius:999px;}
 .av-catprod{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:8px;}
+.av-confirmov{position:absolute;inset:0;z-index:90;background:rgba(12,10,22,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;animation:av-fade .15s ease;}
+.av-confirmbox{background:var(--surface);border-radius:22px;padding:18px;width:100%;max-width:320px;box-shadow:0 24px 60px -16px rgba(10,8,30,.55);animation:av-slideup .22s cubic-bezier(.2,.8,.2,1);}
+.av-confirmimg{width:100%;aspect-ratio:1;border-radius:16px;background-size:cover;background-position:center;}
+.av-confirmtitle{font-weight:700;font-size:16px;letter-spacing:-.01em;margin-top:14px;text-align:center;}
+.av-confirmq{color:var(--muted);font-size:13.5px;text-align:center;margin-top:3px;}
+.av-confirmq b{color:var(--ink);}
+.av-confirmbtns{display:flex;gap:9px;margin-top:16px;}
+.av-confirmbtns .av-btn{flex:1;justify-content:center;}
+.av-confirmbtns .av-btn.ghost{flex:0 0 84px;}
 .av-catx{flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--hot);font-size:13px;cursor:pointer;display:grid;place-items:center;}
 .av-catx:active{transform:scale(.93);}
 .av-catx:disabled{opacity:.4;cursor:default;}
@@ -894,10 +904,11 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
     const u = new URL(window.location.href); u.searchParams.delete("pago"); window.history.replaceState({}, "", u);
   }, []);
   const toggleFav = (id) => setFavs((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
-  const addToCart = (product, variant, qty) => {
-    const key = `${product.id}-${variant.color}-${variant.size}`;
-    setCart((c) => { const ex = c.find((i) => i.key === key); if (ex) return c.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i)); return [...c, { key, id: product.id, name: product.name, emoji: product.emoji, g: product.g, images: product.images, price: product.price, color: variant.color, size: variant.size, qty }]; });
-    setAdded({ name: product.name, emoji: product.emoji, g: product.g, images: product.images, price: product.price, color: variant.color, size: variant.size });
+  const addToCart = (product, variant, qty, image) => {
+    const key = `${product.id}-${variant.color}-${variant.size}` + (image ? "-" + image : "");
+    const imgs = image ? [image] : product.images;
+    setCart((c) => { const ex = c.find((i) => i.key === key); if (ex) return c.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i)); return [...c, { key, id: product.id, name: product.name, emoji: product.emoji, g: product.g, images: imgs, price: product.price, color: variant.color, size: variant.size, qty }]; });
+    setAdded({ name: product.name, emoji: product.emoji, g: product.g, images: imgs, price: product.price, color: variant.color, size: variant.size });
   };
   const goCart = () => { setAdded(null); setDetailId(null); setTab("cart"); document.querySelector(".av-screen")?.scrollTo(0, 0); };
   const keepShopping = () => setAdded(null);
@@ -1118,6 +1129,9 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const variant = product.variants.find((v) => v.color === color && v.size === size);
   const stock = variant?.stock ?? 0; const pct = off(product.price, product.was);
   const out = isSoldOut(product);
+  const noSize = !product.variants.some((v) => v.size && v.size !== "Única");
+  const [confirmImg, setConfirmImg] = useState(null);
+  const pickThumb = (i) => { setPaused(true); setSlide(i); if (noSize && baseImgs && baseImgs.length > 1 && !out) setConfirmImg(baseImgs[i]); };
   const [waitOpen, setWaitOpen] = useState(false);
   const [contact, setContact] = useState("");
   const [notified, setNotified] = useState(false);
@@ -1148,7 +1162,7 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         {slides.length > 1 && <div className="av-dots">{slides.map((_, i) => <i key={i} className={slide === i ? "on" : ""} onClick={() => galPick(i)} />)}</div>}
       </div>
       {hasImg && baseImgs.length > 1 && (
-        <div className="av-thumbs">{baseImgs.map((src, i) => (<button key={i} className={"av-thumbmini" + (slide === i ? " on" : "")} style={imgBg(src)} onClick={() => galPick(i)} aria-label={"foto " + (i + 1)} />))}</div>
+        <div className="av-thumbs">{baseImgs.map((src, i) => (<button key={i} className={"av-thumbmini" + (slide === i ? " on" : "")} style={imgBg(src)} onClick={() => pickThumb(i)} aria-label={"foto " + (i + 1)} />))}</div>
       )}
       <div className="av-sec">
         <span className="av-cat">{product.category}</span><h1 className="av-h1">{product.name}</h1>
@@ -1178,7 +1192,7 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
       <div style={{ height: 8 }} />
       <div className="av-bottombar">
         {!out ? (
-          <button className="av-btn primary" disabled={stock === 0} onClick={() => onAdd(product, variant, 1)}>{I.bag({ width: 18, height: 18 })} {stock === 0 ? "Sin stock" : "Agregar — " + CLP(product.price)}</button>
+          <button className="av-btn primary" disabled={stock === 0} onClick={() => onAdd(product, variant, 1, noSize && baseImgs ? baseImgs[slide] : undefined)}>{I.bag({ width: 18, height: 18 })} {stock === 0 ? "Sin stock" : "Agregar — " + CLP(product.price)}</button>
         ) : notified ? (
           <div className="av-btn primary" style={{ background: "var(--ok)", cursor: "default" }}>{I.check()} Te avisaremos cuando vuelva</div>
         ) : waitOpen ? (
@@ -1188,6 +1202,19 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         )}
         <a href={waLink} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none" }}>{I.wa()}</a>
       </div>
+      {confirmImg && (
+        <div className="av-confirmov" onClick={() => setConfirmImg(null)}>
+          <div className="av-confirmbox" onClick={(e) => e.stopPropagation()}>
+            <div className="av-confirmimg" style={imgBg(confirmImg)} />
+            <div className="av-confirmtitle">{product.name}</div>
+            <div className="av-confirmq">¿Quieres agregar <b>este</b> al carrito?</div>
+            <div className="av-confirmbtns">
+              <button className="av-btn ghost" onClick={() => setConfirmImg(null)}>No</button>
+              <button className="av-btn primary" onClick={() => { onAdd(product, variant, 1, confirmImg); setConfirmImg(null); }}>{I.bag({ width: 17, height: 17 })} Agregar — {CLP(product.price)}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
