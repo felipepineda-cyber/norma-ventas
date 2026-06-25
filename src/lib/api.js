@@ -206,6 +206,7 @@ export async function createProduct(storeId, product, variants) {
       active: product.active !== false,
       is_new: true,
       sort_order: product.sort_order ?? 0,
+      size_stock: product.sizeStock || {},
     })
     .select()
     .single();

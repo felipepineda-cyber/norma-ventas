@@ -375,6 +375,11 @@ const CSS = `
 .av-catx{flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--hot);font-size:13px;cursor:pointer;display:grid;place-items:center;}
 .av-catx:active{transform:scale(.93);}
 .av-catx:disabled{opacity:.4;cursor:default;}
+.av-sizetotals{display:flex;flex-direction:column;gap:8px;}
+.av-sizetotal{display:flex;align-items:center;gap:10px;}
+.av-sizetotallabel{flex:0 0 64px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:9px 0;text-align:center;}
+.av-sizetotal .av-input{flex:1;}
+.av-mcell:disabled{opacity:.4;background:var(--soft);cursor:not-allowed;}
 .av-photoout{position:absolute;top:4px;left:4px;background:rgba(26,24,32,.78);color:#fff;font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase;}
 .av-colorchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .av-colorchip{display:inline-flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;background:#fff;}
@@ -442,6 +447,7 @@ function mapProduct(row) {
     isNew: !!row.is_new, rating: Number(row.rating) || 0, reviews: row.reviews_count || 0, g: gradFor(row.id),
     soldOutManual: !!row.sold_out_manual,
     soldImages: row.sold_images || [],
+    sizeStock: row.size_stock || {},
     variants: (row.variants || []).map((v) => ({ id: v.id, color: v.color, hex: v.hex, size: v.size, stock: v.stock }))
       .sort((a, b) => a.color.localeCompare(b.color) || String(a.size).localeCompare(String(b.size))),
   };
@@ -1076,7 +1082,7 @@ function Favs({ products, favs, toggleFav, open, goHome }) {
   return (<div className="av-anim"><div className="av-shead"><h3>Tus favoritos</h3></div>{products.length === 0 ? <div className="av-empty">{I.heart(false)({ width: 32, height: 32 })}<div>Aún no tienes favoritos.</div><button className="av-btn dark" style={{ flex: "none", padding: "11px 22px", marginTop: 6 }} onClick={goHome}>Explorar productos</button></div> : <div className="av-grid">{products.map((p) => <Card key={p.id} p={p} fav={favs.includes(p.id)} onFav={() => toggleFav(p.id)} onClick={() => open(p.id)} />)}</div>}</div>);
 }
 function Card({ p, fav, onFav, onClick, preview }) {
-  const stock = p.variants.reduce((s, v) => s + v.stock, 0);
+  const stock = totalStock(p);
   const low = stock > 0 && stock <= 3; const pct = off(p.price, p.was);
   const out = isSoldOut(p);
   const av = availImages(p);
@@ -1113,7 +1119,9 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const colors = Array.from(new Set(product.variants.map((v) => v.color)));
   const realColors = colors.filter((c) => !NOCLR(c));
   const hasColors = realColors.length > 0;
-  const colorStock = (c) => product.variants.filter((v) => v.color === c).reduce((s, v) => s + v.stock, 0);
+  const sizeMode = !!(product.sizeStock && Object.keys(product.sizeStock).length);
+  const colorStock = (c) => sizeMode ? 1 : product.variants.filter((v) => v.color === c).reduce((s, v) => s + v.stock, 0);
+  const sizeAvail = (sz) => sizeMode ? (Number(product.sizeStock[sz]) || 0) : (product.variants.find((v) => v.color === color && v.size === sz)?.stock ?? 0);
   const [color, setColor] = useState(colors[0]);
   const sizesForColor = product.variants.filter((v) => v.color === color);
   const hasSizes = sizesForColor.some((v) => v.size && v.size !== "Única");
@@ -1127,7 +1135,7 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
   const galPick = (i) => { setPaused(true); setSlide(i); };
   useEffect(() => { const list = product.variants.filter((v) => v.color === color); if (!list.some((v) => v.size === size)) setSize(list[0]?.size); }, [color]); // eslint-disable-line
   const variant = product.variants.find((v) => v.color === color && v.size === size);
-  const stock = variant?.stock ?? 0; const pct = off(product.price, product.was);
+  const stock = sizeMode ? (Number(product.sizeStock[size]) || 0) : (variant?.stock ?? 0); const pct = off(product.price, product.was);
   const out = isSoldOut(product);
   const noSize = !product.variants.some((v) => v.size && v.size !== "Única");
   const [confirmImg, setConfirmImg] = useState(null);
@@ -1169,11 +1177,12 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
         {product.reviews > 0 && <div className="av-rate" style={{ marginTop: 8, fontSize: 13 }}><Stars v={product.rating} /><span>{product.rating}</span><span className="c">· {product.reviews} reseñas</span></div>}
         <div className="av-detprice"><span className="av-price">{CLP(product.price)}</span>{product.was && <><span className="av-was">{CLP(product.was)}</span><span className="av-off">Ahorras {CLP(product.was - product.price)}</span></>}</div>
         {hasColors && (<>
-          <div className="av-vlabel">Color · {color} · {colorStock(color) === 0 ? "sin stock" : colorStock(color) + " disp."}</div>
-          <div className="av-swatches">{realColors.map((c) => { const h = product.variants.find((v) => v.color === c)?.hex; const out = colorStock(c) === 0; return <div key={c} className={"av-swatch" + (color === c ? " on" : "") + (out ? " off" : "")} style={{ background: h }} onClick={() => !out && setColor(c)} title={c + (out ? " (sin stock)" : "")} />; })}</div>
+          <div className="av-vlabel">Color · {color}{sizeMode ? " · a confirmar" : (colorStock(color) === 0 ? " · sin stock" : " · " + colorStock(color) + " disp.")}</div>
+          <div className="av-swatches">{realColors.map((c) => { const h = product.variants.find((v) => v.color === c)?.hex; const out = !sizeMode && colorStock(c) === 0; return <div key={c} className={"av-swatch" + (color === c ? " on" : "") + (out ? " off" : "")} style={{ background: h }} onClick={() => !out && setColor(c)} title={c + (out ? " (sin stock)" : "")} />; })}</div>
+          {sizeMode && <p className="av-hint" style={{ textAlign: "left", margin: "6px 0 0" }}>El color es una preferencia; confirmaremos disponibilidad por WhatsApp.</p>}
         </>)}
-        {hasSizes && (<><div className="av-vlabel">Talla</div><div className="av-sizes">{sizesForColor.map((v) => <button key={v.size} disabled={v.stock === 0} className={"av-size" + (size === v.size ? " on" : "") + (v.stock === 0 ? " off" : "")} onClick={() => v.stock > 0 && setSize(v.size)}>{v.size}</button>)}</div></>)}
-        <div style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: stock === 0 ? "var(--muted)" : stock <= 3 ? "var(--hot)" : "var(--ok)" }}>{stock === 0 ? "Sin stock en esta combinación" : stock <= 3 ? `¡Solo quedan ${stock}!` : `${stock} disponibles`}</div>
+        {hasSizes && (<><div className="av-vlabel">Talla</div><div className="av-sizes">{(sizeMode ? Object.keys(product.sizeStock) : sizesForColor.map((v) => v.size)).map((sz) => { const av = sizeAvail(sz); return <button key={sz} disabled={av === 0} className={"av-size" + (size === sz ? " on" : "") + (av === 0 ? " off" : "")} onClick={() => av > 0 && setSize(sz)}>{sz}</button>; })}</div></>)}
+        <div style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: stock === 0 ? "var(--muted)" : stock <= 3 ? "var(--hot)" : "var(--ok)" }}>{stock === 0 ? "Sin stock en esta talla" : stock <= 3 ? `¡Solo quedan ${stock}!` : `${stock} disponibles`}{sizeMode && stock > 0 ? " en esta talla" : ""}</div>
         {product.benefits?.length > 0 && <ul className="av-benefits">{product.benefits.map((b, i) => <li key={i}>{I.check()}<span>{b}</span></li>)}</ul>}
         {product.desc && <p className="av-desc">{product.desc}</p>}
         {out && alts.length > 0 && (
@@ -1518,7 +1527,7 @@ function SellerProducts({ products, onToggle, onSetSoldOut, onCreate, onDelete, 
       <button className="av-btn dark av-addbtn" onClick={() => setAdding(true)}>{I.plus()} Agregar producto</button>
       {products.length === 0 && <div className="av-empty">Aún no tienes productos. Toca “Agregar producto”.</div>}
       {products.length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Toca un producto para editarlo, o deslízalo hacia la izquierda para editar o eliminar.</p>}
-      {products.map((p) => { const stock = p.variants.reduce((s, v) => s + v.stock, 0); return (
+      {products.map((p) => { const stock = totalStock(p); return (
         <SwipeRow key={p.id} onEdit={() => setEditing(p)} onTap={() => setEditing(p)} onDelete={() => { if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) onDelete(p.id); }}>
           <div className="av-srow2" style={{ borderBottom: 0 }}><div className="av-linethumb" style={{ ...mediaStyle(p), width: 48, height: 48, fontSize: 21, position: "relative" }}>{isSoldOut(p) && <SoldLayer sm chip={false} />}{!(p.images && p.images.length) && p.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{p.name}</div><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}><span className="av-price" style={{ fontSize: 13 }}>{CLP(p.price)}</span><span className="av-cat">· {stock} stock</span>{isSoldOut(p) && <span className="av-tag off">Agotado</span>}{p.offerPct > 0 && <span className="av-off">-{p.offerPct}%</span>}{p.featured && <span className="av-tag featured">Destacado</span>}{!p.active && <span className="av-tag off">Oculto</span>}</div></div><div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}><button className={"av-toggle" + (p.active ? " on" : "")} onClick={() => onToggle(p.id, "active")}><span className="kn" /></button><button onClick={() => onToggle(p.id, "featured")} style={{ border: 0, background: "none", fontSize: 11, color: p.featured ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontWeight: 600 }}>{p.featured ? "★ Destacado" : "☆ Destacar"}</button></div></div>
         </SwipeRow>
@@ -1668,6 +1677,7 @@ function AddProduct({ onCancel, onCreate, cats = [] }) {
   const [colors, setColors] = useState([]);
   const [sizes, setSizes] = useState([]);
   const [matrix, setMatrix] = useState({});
+  const [sizeTotals, setSizeTotals] = useState({});
   const [baseStock, setBaseStock] = useState("");
   const [pickHex, setPickHex] = useState("#F5A9C8");
   const [pickName, setPickName] = useState("");
@@ -1683,20 +1693,28 @@ function AddProduct({ onCancel, onCreate, cats = [] }) {
   const addSize = (s) => { const v = (s || "").trim(); if (!v || sizes.includes(v)) return; setSizes((ss) => [...ss, v]); };
   const delSize = (s) => setSizes((ss) => ss.filter((x) => x !== s));
   const setCell = (key, val) => setMatrix((m) => ({ ...m, [key]: Math.max(0, Number(val) || 0) }));
+  const setSizeTotal = (s, val) => setSizeTotals((m) => ({ ...m, [s]: Math.max(0, Number(val) || 0) }));
 
   const cs = colors.length ? colors : [{ name: "Único", hex: "#6B6B78" }];
   const ss = sizes.length ? sizes : ["Única"];
   const hasVariants = colors.length > 0 || sizes.length > 0;
-  const variantStock = hasVariants ? cs.reduce((s, c) => s + ss.reduce((a, sz) => a + (Number(matrix[c.name + "||" + sz]) || 0), 0), 0) : Number(baseStock) || 0;
+  const sizeMode = sizes.length > 0 && sizes.some((s) => Number(sizeTotals[s]) > 0);
+  const matrixStock = cs.reduce((s, c) => s + ss.reduce((a, sz) => a + (Number(matrix[c.name + "||" + sz]) || 0), 0), 0);
+  const sizeTotalStock = sizes.reduce((a, s) => a + (Number(sizeTotals[s]) || 0), 0);
+  const variantStock = sizeMode ? sizeTotalStock : (hasVariants ? matrixStock : Number(baseStock) || 0);
   const valid = f.name && f.price && variantStock > 0 && !saving;
 
   const save = async () => {
     setSaving(true);
     try {
       let variants = [];
-      if (hasVariants) cs.forEach((c) => ss.forEach((sz) => { const st = Number(matrix[c.name + "||" + sz]) || 0; if (st > 0) variants.push({ color: c.name, hex: c.hex, size: sz, stock: st }); }));
+      let sizeStock = {};
+      if (sizeMode) {
+        sizes.forEach((s) => { const t = Number(sizeTotals[s]) || 0; if (t > 0) sizeStock[s] = t; });
+        cs.forEach((c) => Object.keys(sizeStock).forEach((s) => variants.push({ color: c.name, hex: c.hex, size: s, stock: 0 })));
+      } else if (hasVariants) cs.forEach((c) => ss.forEach((sz) => { const st = Number(matrix[c.name + "||" + sz]) || 0; if (st > 0) variants.push({ color: c.name, hex: c.hex, size: sz, stock: st }); }));
       else variants = [{ color: "Único", hex: "#6B6B78", size: "Única", stock: Number(baseStock) || 0 }];
-      const data = { name: f.name, category: f.category || "General", audience: aud, emoji: f.emoji, desc: f.desc, benefits: f.benefits.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3), normalPrice: Number(f.price), offerPct: 0, active: true, featured: false, top: false };
+      const data = { name: f.name, category: f.category || "General", audience: aud, emoji: f.emoji, desc: f.desc, benefits: f.benefits.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3), normalPrice: Number(f.price), offerPct: 0, active: true, featured: false, top: false, sizeStock };
       await onCreate(data, variants, images.map((i) => i.file));
       onCancel();
     } catch (e) { alert(e.message); setSaving(false); }
@@ -1725,9 +1743,16 @@ function AddProduct({ onCancel, onCreate, cats = [] }) {
       <div className="av-field"><label>Precio (CLP) *</label><input className="av-input" type="number" value={f.price} onChange={(e) => up("price", e.target.value)} placeholder="14990" /></div>
       <div className="av-field"><label>Colores <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>{colors.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{colors.map((c) => (<span key={c.name} className="av-colorchip"><span className="av-colordot" style={{ background: c.hex }} />{c.name}<button className="av-colordel" onClick={() => delColor(c.name)}>×</button></span>))}</div>}<div className="av-presets">{COLOR_PRESETS.map((c) => <span key={c.name} className="av-presetdot" style={{ background: c.hex }} title={c.name} onClick={() => addColor(c)} />)}</div><div className="av-coloradd"><input className="av-colorpick" type="color" value={pickHex} onChange={(e) => setPickHex(e.target.value)} title="Rueda cromática" /><input className="av-input" style={{ flex: 1, minWidth: 120 }} placeholder="Nombre del color" value={pickName} onChange={(e) => setPickName(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={addCustomColor}>Añadir</button></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Déjalo vacío si el producto no tiene color (ej: electrónica, libros).</p></div>
       <div className="av-field"><label>Tallas <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>{sizes.length > 0 && <div className="av-colorchips" style={{ marginBottom: 4 }}>{sizes.map((s) => (<span key={s} className="av-colorchip">{s}<button className="av-colordel" onClick={() => delSize(s)}>×</button></span>))}</div>}<div className="av-sizeadd">{SIZE_PRESETS.map((s) => <button key={s} className="av-stepchip" onClick={() => addSize(s)}>+ {s}</button>)}</div><div className="av-coloradd"><input className="av-input" style={{ flex: 1 }} placeholder="Talla personalizada" value={newSize} onChange={(e) => setNewSize(e.target.value)} /><button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={() => { addSize(newSize); setNewSize(""); }}>Añadir</button></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Déjalo vacío si el producto no tiene talla (ej: bufandas, accesorios).</p></div>
-      {hasVariants ? (
-        <div className="av-field"><label>Stock por color y talla</label><div className="av-matrix"><table className="av-mtable"><thead><tr><th></th>{ss.map((s) => <th key={s}>{s}</th>)}</tr></thead><tbody>{cs.map((c) => (<tr key={c.name}><td><span className="av-mcolor"><span className="av-colordot" style={{ background: c.hex }} />{c.name}</span></td>{ss.map((s) => { const key = c.name + "||" + s; return (<td key={s}><input className="av-mcell" type="number" min="0" value={matrix[key] ?? ""} placeholder="0" onChange={(e) => setCell(key, e.target.value)} /></td>); })}</tr>))}</tbody></table></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Escribe la cantidad en cada celda. Solo se guardan las combinaciones con stock mayor a 0.</p></div>
-      ) : (
+      {hasVariants ? (<>
+        <div className="av-field"><label>Stock por color y talla</label><div className="av-matrix"><table className="av-mtable"><thead><tr><th></th>{ss.map((s) => <th key={s}>{s}</th>)}</tr></thead><tbody>{cs.map((c) => (<tr key={c.name}><td><span className="av-mcolor"><span className="av-colordot" style={{ background: c.hex }} />{c.name}</span></td>{ss.map((s) => { const key = c.name + "||" + s; return (<td key={s}><input className="av-mcell" type="number" min="0" value={matrix[key] ?? ""} placeholder="0" disabled={sizeMode} onChange={(e) => setCell(key, e.target.value)} /></td>); })}</tr>))}</tbody></table></div><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Escribe la cantidad en cada celda. Solo se guardan las combinaciones con stock mayor a 0.</p></div>
+        {sizes.length > 0 && (
+          <div className="av-field"><label>Stock total por talla <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional)</span></label>
+            <p className="av-hint" style={{ textAlign: "left", margin: "0 0 8px" }}>Si lo llenas, no cuentas color por color: indicas cuántas hay por talla y los <b>colores se confirman por WhatsApp</b>. Tiene prioridad sobre la tabla de arriba.</p>
+            <div className="av-sizetotals">{sizes.map((s) => (<div key={s} className="av-sizetotal"><span className="av-sizetotallabel">{s}</span><input className="av-input" type="number" min="0" value={sizeTotals[s] ?? ""} placeholder="0" onChange={(e) => setSizeTotal(s, e.target.value)} /></div>))}</div>
+            {sizeMode && <p className="av-hint" style={{ textAlign: "left", marginTop: 8, color: "var(--accent)" }}>Modo por talla activo: los colores se mostrarán como posibles y se confirman por WhatsApp.</p>}
+          </div>
+        )}
+      </>) : (
         <div className="av-field"><label>Stock total *</label><input className="av-input" type="number" value={baseStock} onChange={(e) => setBaseStock(e.target.value)} placeholder="10" /><p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Agrega colores y/o tallas para gestionar stock por variante.</p></div>
       )}
       <div className="av-field"><label>Beneficios (uno por línea, máx. 3)</label><textarea className="av-input" rows={3} value={f.benefits} onChange={(e) => up("benefits", e.target.value)} placeholder={"Tela de bambú suave\nNo destiñe\nIdeal para clima cálido"} style={{ resize: "none", fontFamily: "inherit" }} /></div>
@@ -2174,7 +2199,7 @@ const CAT_PRESETS = ["Camisetas", "Calcetines", "Pantys", "Bufandas", "Pantalone
 
 // ----- Estado "Agotado" -----
 const URGENCIA_STOCK_BAJO = true; // muestra "Últimas unidades" cuando el stock es bajo (≤3)
-const totalStock = (p) => p.variants.reduce((s, v) => s + v.stock, 0);
+const totalStock = (p) => { const ss = p.sizeStock || {}; const ks = Object.keys(ss); return ks.length ? ks.reduce((a, k) => a + (Number(ss[k]) || 0), 0) : p.variants.reduce((s, v) => s + v.stock, 0); };
 const availImages = (p) => (p.images || []).filter((u) => !(p.soldImages || []).includes(u));
 const isSoldOut = (p) => !!p.soldOutManual || totalStock(p) === 0 || ((p.images?.length > 0) && availImages(p).length === 0);
 function SoldLayer({ sm, chip = true }) {
