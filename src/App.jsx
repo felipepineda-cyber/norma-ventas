@@ -1304,15 +1304,14 @@ function Cart({ cart, setCart, total, onShop, onCheckout }) {
 }
 function Checkout({ store, total, onBack, onPlace, showToast }) {
   const [copied, setCopied] = useState(null);
-  const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [comp, setComp] = useState(null);
+  const [name, setName] = useState(""); const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
   const [method, setMethod] = useState("transferencia");
   const copy = (k, v) => { if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); setCopied(k); showToast("Copiado"); setTimeout(() => setCopied(null), 1400); };
-  const onFile = (e) => { const f = e.target.files?.[0]; if (!f) return; setComp({ name: f.name, url: f.type.startsWith("image/") ? URL.createObjectURL(f) : null, file: f }); };
-  const ready = name.trim() && phone.trim() && (method !== "transferencia" || comp) && !sending;
+  const ready = name.trim() && phone.trim() && !sending;
   const b = store.bank || {};
   const rows = [["Banco", b.banco], ["Tipo de cuenta", b.tipo], ["N° de cuenta", b.numero], ["RUT", b.rut], ["Titular", b.titular], ["Correo", b.correo]].filter(([, v]) => v);
-  const submit = async () => { setSending(true); try { await onPlace({ name, phone }, comp, method); } catch (e) { alert(e.message); setSending(false); } };
+  const submit = async () => { setSending(true); try { await onPlace({ name, phone }, null, method); } catch (e) { alert(e.message); setSending(false); } };
   const title = method === "efectivo" ? "Pagar en efectivo" : method === "mercadopago" ? "Pagar con Mercado Pago" : "Pagar por transferencia";
   const mpOn = !!(store.sii && store.theme && store.theme.mp);
   return (
@@ -1331,7 +1330,10 @@ function Checkout({ store, total, onBack, onPlace, showToast }) {
       <div className="av-field"><label>Tu nombre</label><input className="av-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" /></div>
       <div className="av-field"><label>Tu WhatsApp</label><input className="av-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+56 9 ..." /></div>
       {method === "transferencia" ? (
-      <label className={"av-upload" + (comp ? " has" : "")}><input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={onFile} />{comp ? (<>{comp.url ? <img src={comp.url} className="av-upimg" alt="comprobante" /> : I.check({ width: 26, height: 26 })}<div style={{ fontSize: 13, fontWeight: 600, color: "var(--ok)" }}>Comprobante adjunto</div><div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{comp.name} · tocar para cambiar</div></>) : (<><div style={{ color: "var(--accent)", marginBottom: 6 }}>{I.up()}</div><div style={{ fontSize: 13, fontWeight: 600 }}>Adjuntar comprobante</div><div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Foto o PDF de tu transferencia</div></>)}</label>
+      <div className="av-cashbox" style={{ flexDirection: "column", alignItems: "stretch", gap: 11 }}>
+        <div style={{ display: "flex", gap: 10 }}><span style={{ color: "var(--wa)", flex: "none" }}>{I.wa({ width: 18, height: 18 })}</span><div>Cuando hagas la transferencia, <b>envíanos el comprobante por WhatsApp</b> para validar tu pago. {store.name} te confirmará por ahí mismo.</div></div>
+        {store.whatsapp && <a href={`https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}! Hice una compra por transferencia por ${CLP(total)}. Aquí va mi comprobante:`)}`} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none", justifyContent: "center", color: "#fff" }}>{I.wa()} Enviar comprobante por WhatsApp</a>}
+      </div>
       ) : method === "mercadopago" ? (
       <div className="av-cashbox"><span style={{ color: "var(--accent)", flex: "none" }}>{I.lock({ width: 18, height: 18 })}</span><div>Pagarás <b>{CLP(total)}</b> de forma segura en Mercado Pago (tarjeta de crédito, débito o saldo). Al confirmar, te llevamos al pago y luego vuelves a la tienda.</div></div>
       ) : (
@@ -1346,10 +1348,10 @@ function Checkout({ store, total, onBack, onPlace, showToast }) {
 function Done({ store, order, onHome }) {
   const cash = order.method === "efectivo";
   const lines = order.items.map((i) => `• ${i.name} (${i.color}${i.size !== "Única" ? " / " + i.size : ""}) x${i.qty}`).join("\n");
-  const closing = cash ? "Pagaré en efectivo al recibir. ¿Coordinamos la entrega?" : "Adjunté el comprobante de transferencia. ¿Me confirmas?";
+  const closing = cash ? "Pagaré en efectivo al recibir. ¿Coordinamos la entrega?" : "Ya hice la transferencia y te envío el comprobante por aquí. ¿Me confirmas?";
   const msg = `Hola ${store.name}, hice mi pedido *${order.id}* por ${CLP(order.total)}.\n${lines}\n${closing}`;
   const link = `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(msg)}`;
-  return (<div className="av-conf av-anim"><div className="av-confcircle">{I.check({ width: 36, height: 36 })}</div><div className="av-h1">¡Pedido recibido!</div><div style={{ fontFamily: "Space Grotesk", fontWeight: 700, color: "var(--accent)", fontSize: 15 }}>{order.id}</div><span className="av-pill">{cash ? "💵 Pago en efectivo al recibir" : "⏳ Pago en revisión"}</span><p className="av-desc" style={{ textAlign: "center", maxWidth: 290 }}>{cash ? `Guardamos tu pedido. ${store.name} coordinará la entrega y el pago en efectivo por WhatsApp.` : `Recibimos tu comprobante. ${store.name} validará la transferencia y te confirmará por WhatsApp.`}</p><a href={link} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none", marginTop: 12, width: "auto", padding: "15px 24px", color: "#fff" }}>{I.wa()} Continuar por WhatsApp</a><button className="av-btn ghost" style={{ flex: "none", padding: "13px 24px", marginTop: 8 }} onClick={onHome}>Seguir comprando</button></div>);
+  return (<div className="av-conf av-anim"><div className="av-confcircle">{I.check({ width: 36, height: 36 })}</div><div className="av-h1">¡Pedido recibido!</div><div style={{ fontFamily: "Space Grotesk", fontWeight: 700, color: "var(--accent)", fontSize: 15 }}>{order.id}</div><span className="av-pill">{cash ? "💵 Pago en efectivo al recibir" : "⏳ Pago en revisión"}</span><p className="av-desc" style={{ textAlign: "center", maxWidth: 290 }}>{cash ? `Guardamos tu pedido. ${store.name} coordinará la entrega y el pago en efectivo por WhatsApp.` : `Guardamos tu pedido. Envíale el comprobante a ${store.name} por WhatsApp para validar tu transferencia.`}</p><a href={link} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none", marginTop: 12, width: "auto", padding: "15px 24px", color: "#fff" }}>{I.wa()} Continuar por WhatsApp</a><button className="av-btn ghost" style={{ flex: "none", padding: "13px 24px", marginTop: 8 }} onClick={onHome}>Seguir comprando</button></div>);
 }
 
 /* ============================ VENDEDOR ============================ */
