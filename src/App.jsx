@@ -1091,11 +1091,15 @@ function PromoBanner({ store }) {
   const idx = Math.min(i, n - 1);
   const s = slides[idx];
   const a = s.a || store.logoA, b = s.b || store.logoB;
+  const hasImg = !!s.img;
+  const promoStyle = hasImg
+    ? { backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.12)), linear-gradient(120deg, ${hexA(a, 0.32)}, ${hexA(b, 0.18)}), url(${s.img})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : grad(a, b);
   const onTS = (e) => { sx.current = e.touches[0].clientX; };
   const onTE = (e) => { const dx = e.changedTouches[0].clientX - sx.current; if (Math.abs(dx) > 40 && n > 1) setI((x) => (x + (dx < 0 ? 1 : n - 1)) % n); };
   return (
-    <div className="av-promo" style={grad(a, b)} onTouchStart={onTS} onTouchEnd={onTE}>
-      <div className="blob" /><div className="blob2" />
+    <div className="av-promo" style={promoStyle} onTouchStart={onTS} onTouchEnd={onTE}>
+      {!hasImg && <><div className="blob" /><div className="blob2" /></>}
       <div key={idx} className="av-anim" style={{ position: "relative" }}>
         <div className="eyebrow">{s.eyebrow}</div>
         <div className="big">{s.title}</div>
@@ -2040,6 +2044,9 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo, focusSub }) {
   const upSlide = (idx, k, v) => setSlides(slides.map((s, i) => (i === idx ? { ...s, [k]: v } : s)));
   const addSlide = () => setSlides([...slides, { eyebrow: "Novedad", title: "Nuevo banner", sub: "" }]);
   const delSlide = (idx) => setSlides(slides.filter((_, i) => i !== idx));
+  const [imgBusy, setImgBusy] = useState(-1);
+  const onSlideImg = async (i, e) => { const f = e.target.files?.[0]; if (!f) return; setImgBusy(i); try { const url = await uploadStoreLogo(store.id, f); upSlide(i, "img", url); } catch (err) { alert(err.message); } finally { setImgBusy(-1); e.target.value = ""; } };
+  const applyLogoToSlide = async (i) => { try { const pal = await paletteFromStore(store); setSlides(slides.map((s, x) => (x === i ? { ...s, a: pal[0], b: pal[1] || pal[0] } : s))); } catch (err) { alert(err.message); } };
   const LOGO_GRADS = [["#3B2BFF", "#7A4DFF"], ["#F0392B", "#FF7A59"], ["#15A34A", "#7AD67A"], ["#FFB400", "#FF7A00"], ["#1C1C22", "#43434F"], ["#0EA5E9", "#6366F1"]];
   const LOGO_EMOJIS = ["🛍️", "🎮", "📦", "👕", "🧢", "👟", "🎧", "💄", "🍰", "🌿"];
   const onLogo = async (e) => {
@@ -2117,18 +2124,29 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo, focusSub }) {
 
       <BrandSection id="carrusel" title="Carrusel de ofertas" openSet={openSet} setOpenSet={setOpenSet}>
         <p className="av-hint" style={{ textAlign: "left", marginBottom: 12 }}>Banners que rotan en la portada de tu tienda. Agrega varios para que vayan cambiando solos.</p>
-        {slides.map((sl, i) => (
+        {slides.map((sl, i) => {
+          const prevStyle = sl.img
+            ? { backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.12)), url(${sl.img})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : grad(sl.a || store.logoA, sl.b || store.logoB);
+          return (
           <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 12, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <div className="av-promo" style={{ ...grad(sl.a || store.logoA, sl.b || store.logoB), margin: 0, padding: 12, borderRadius: 12, minWidth: 0, flex: 1 }}><div style={{ position: "relative" }}><div className="eyebrow" style={{ fontSize: 9 }}>{sl.eyebrow || " "}</div><div className="big" style={{ fontSize: 15 }}>{sl.title || " "}</div></div></div>
+              <div className="av-promo" style={{ ...prevStyle, margin: 0, padding: 12, borderRadius: 12, minWidth: 0, flex: 1 }}><div style={{ position: "relative" }}><div className="eyebrow" style={{ fontSize: 9 }}>{sl.eyebrow || " "}</div><div className="big" style={{ fontSize: 15 }}>{sl.title || " "}</div></div></div>
               {slides.length > 1 && <button className="av-btn ghost" style={{ flex: "none", marginLeft: 8, padding: "8px 12px", fontSize: 12 }} onClick={() => delSlide(i)}>Quitar</button>}
             </div>
             <div className="av-field" style={{ paddingBottom: 8 }}><label>Texto pequeño</label><input className="av-input" value={sl.eyebrow || ""} onChange={(e) => upSlide(i, "eyebrow", e.target.value)} placeholder="OFERTAS" /></div>
             <div className="av-field" style={{ paddingBottom: 8 }}><label>Título</label><input className="av-input" value={sl.title || ""} onChange={(e) => upSlide(i, "title", e.target.value)} placeholder="Bienvenido" /></div>
             <div className="av-field" style={{ paddingBottom: 8 }}><label>Subtítulo (opcional)</label><input className="av-input" value={sl.sub || ""} onChange={(e) => upSlide(i, "sub", e.target.value)} placeholder="Hasta 30% de descuento" /></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>Colores:</span><input type="color" className="av-colorpick" value={sl.a || store.logoA} onChange={(e) => upSlide(i, "a", e.target.value)} /><input type="color" className="av-colorpick" value={sl.b || store.logoB} onChange={(e) => upSlide(i, "b", e.target.value)} /></div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+              <label className="av-btn dark" style={{ flex: "none", padding: "9px 14px", cursor: "pointer", fontSize: 12 }}>{imgBusy === i ? "Subiendo…" : sl.img ? "Cambiar foto" : "Subir foto"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => onSlideImg(i, e)} /></label>
+              {sl.img && <button className="av-btn ghost" style={{ flex: "none", padding: "9px 14px", fontSize: 12 }} onClick={() => upSlide(i, "img", null)}>Quitar foto</button>}
+              <button className="av-btn ghost" style={{ flex: "none", padding: "9px 14px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => applyLogoToSlide(i)}>{I.palette({ width: 14, height: 14 })} Aplicar diseño del logo</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{sl.img ? "Tinte:" : "Colores:"}</span><input type="color" className="av-colorpick" value={sl.a || store.logoA} onChange={(e) => upSlide(i, "a", e.target.value)} /><input type="color" className="av-colorpick" value={sl.b || store.logoB} onChange={(e) => upSlide(i, "b", e.target.value)} /></div>
+            <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>La foto se recorta automáticamente (centrada, a pantalla completa del banner) para verse armónica. El tinte y el texto se mantienen legibles encima.</p>
           </div>
-        ))}
+          );
+        })}
         <button className="av-btn dark block" onClick={addSlide}>{I.plus()} Agregar banner</button>
       </BrandSection>
     </div>
