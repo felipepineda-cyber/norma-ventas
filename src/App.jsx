@@ -6,6 +6,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
   getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, getStoreMP, saveStoreMP, verifyPassword, joinWaitlist, listProducts, createProduct, updateProduct, deleteProduct, addVariants, setOffer,
+  createImportLog, listImportLogs, deleteImportBatch,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, crearPagoMP, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -344,6 +345,41 @@ const CSS = `
 .av-acctstat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;cursor:pointer;font-family:inherit;}
 .av-acctstat .n{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;}
 .av-acctstat .l{font-size:11.5px;color:var(--muted);margin-top:2px;display:inline-flex;align-items:center;gap:5px;}
+.av-imptable{width:100%;border-collapse:collapse;font-size:12.5px;}
+.av-imptable th{text-align:left;padding:9px 12px;background:var(--soft);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
+.av-imptable td{padding:9px 12px;border-top:1px solid var(--line);white-space:nowrap;}
+.av-imptable td:first-child{white-space:normal;font-weight:600;}
+.av-shfilters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;}
+.av-shsel{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 11px;font-family:inherit;font-size:12.5px;color:var(--ink);cursor:pointer;}
+.av-shsel.sm{padding:5px 7px;font-size:12px;max-width:130px;}
+.av-shscroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;}
+.av-shtable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px;}
+.av-shtable th{position:sticky;top:0;background:var(--soft);color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;text-align:left;padding:10px 12px;white-space:nowrap;z-index:1;}
+.av-shtable td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:middle;}
+.av-shname{display:flex;align-items:center;gap:10px;min-width:200px;}
+.av-shthumb{width:40px;height:40px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:18px;background-size:cover;background-position:center;border:1px solid var(--line);}
+.av-shdesc{display:block;border:0;background:none;color:var(--accent);font-size:11px;cursor:pointer;padding:2px 0 0;font-family:inherit;}
+.av-shcell{cursor:text;display:inline-block;min-width:42px;padding:3px 5px;border-radius:6px;border:1px dashed transparent;}
+.av-shcell:hover{border-color:var(--line);background:var(--soft);}
+.av-shinput{width:100%;min-width:60px;border:1px solid var(--accent);border-radius:7px;padding:5px 7px;font-family:inherit;font-size:12.5px;background:var(--surface);color:var(--ink);outline:none;}
+.av-shaud{display:flex;gap:3px;}
+.av-shaudb{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;}
+.av-shaudb.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+.av-shact{display:flex;gap:4px;}
+.av-shact button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;display:grid;place-items:center;}
+.av-shact button:hover{background:var(--soft);}
+.av-toggle.sm{width:38px;height:22px;}
+.av-toggle.sm .kn{width:16px;height:16px;}
+.av-toggle.sm.on .kn{transform:translateX(16px);}
+.av-welcome{padding:0;overflow:hidden;max-width:360px;}
+.av-welcomehero{padding:26px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;color:#fff;text-align:center;}
+.av-welcometag{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
+.av-welcomebody{padding:18px 20px 20px;}
+.av-welcomebody .t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;}
+.av-welcomebody .d{font-size:13px;color:var(--muted);margin:4px 0 12px;}
+.av-welcomelist{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.av-welcomelist .row{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;}
+.av-welcomelist .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none;}
 @keyframes av-flash{0%,100%{background:transparent}18%{background:var(--accent-soft)}}
 .av-drawerchev{font-size:16px;color:var(--muted);padding:2px 6px;border-radius:8px;transition:transform .2s ease;}
 .av-drawerchev.open{transform:rotate(180deg);}
@@ -507,6 +543,7 @@ function mapProduct(row) {
     soldOutManual: !!row.sold_out_manual,
     soldImages: row.sold_images || [],
     sizeStock: row.size_stock || {},
+    importBatchId: row.import_batch_id || null, importIdInterno: row.import_id_interno || null, importedAt: row.imported_at || null,
     variants: (row.variants || []).map((v) => ({ id: v.id, color: v.color, hex: v.hex, size: v.size, stock: v.stock }))
       .sort((a, b) => a.color.localeCompare(b.color) || String(a.size).localeCompare(String(b.size))),
   };
@@ -954,7 +991,7 @@ function Main({ onLogout }) {
             ? <Buyer store={store} products={products} onCreateOrder={createOrderH} onSwitchMode={() => setMode("seller")} />
             : <Seller store={store} products={products} orders={orders} stockLog={stockLog}
                 onLogout={onLogout} onToggle={toggleProduct} onSetSoldOut={setSoldOutH} onSetOffer={setOfferH} onSaveOrder={saveOrderH}
-                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} onAddColor={addColorH} onEditOrder={editOrderH} onDeleteOrder={deleteOrderH} />}
+                onSetStock={setStockH} onCreate={createProductH} onUpdateStore={updateStoreH} onSetStatus={setOrderStatusH} onUploadLogo={uploadLogoH} onSwitchMode={() => setMode("buyer")} onDeleteProduct={deleteProductH} onEditProduct={editProductH} onAddColor={addColorH} onEditOrder={editOrderH} onDeleteOrder={deleteOrderH} onReloadProducts={() => reloadProducts(store.id)} />}
         </div>
       </div>
     </div>
@@ -1022,6 +1059,9 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   useEffect(() => { try { localStorage.setItem(`av_hist_${store.id}`, JSON.stringify(history)); } catch { /* noop */ } }, [history, store.id]);
   const saveAcct = (a) => { setAcct(a); try { localStorage.setItem(`av_acct_${store.id}`, JSON.stringify(a)); } catch { /* noop */ } };
   const logoutAcct = () => { setAcct(null); try { localStorage.removeItem(`av_acct_${store.id}`); } catch { /* noop */ } };
+  const [welcome, setWelcome] = useState(false);
+  useEffect(() => { if (acct) return; let ok = false; try { ok = !localStorage.getItem(`av_welcome_${store.id}`); } catch { ok = false; } if (!ok) return; const t = setTimeout(() => setWelcome(true), 800); return () => clearTimeout(t); }, [acct, store.id]);
+  const closeWelcome = (goAcct) => { setWelcome(false); try { localStorage.setItem(`av_welcome_${store.id}`, "1"); } catch { /* noop */ } if (goAcct) { setTab("account"); document.querySelector(".av-screen")?.scrollTo(0, 0); } };
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("pago");
     if (!p) return;
@@ -1113,7 +1153,33 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
         ))}
       </div>
       {tab !== "cart" && <WaFab store={store} />}
+      {welcome && <WelcomeModal store={store} onRegister={() => closeWelcome(true)} onClose={() => closeWelcome(false)} />}
     </>
+  );
+}
+
+function WelcomeModal({ store, onRegister, onClose }) {
+  const benefits = [
+    [I.heart(false), "Guarda tus favoritos"],
+    [I.bag, "Recupera tu carrito"],
+    [I.user, "Mira tu historial de compras"],
+  ];
+  return (
+    <div className="av-modal" onClick={onClose}>
+      <div className="av-sheet av-welcome" onClick={(e) => e.stopPropagation()}>
+        <div className="av-welcomehero" style={grad(store.logoA, store.logoB)}>
+          <StoreLogo store={store} size={52} radius={16} fontSize={26} />
+          <div className="av-welcometag">¡Bienvenid@ a {store.name}!</div>
+        </div>
+        <div className="av-welcomebody">
+          <div className="t">Crea tu cuenta gratis</div>
+          <div className="d">Con nombre y teléfono guardas todo en este dispositivo:</div>
+          <div className="av-welcomelist">{benefits.map(([ic, t], i) => <div key={i} className="row"><span className="ic">{ic({ width: 16, height: 16 })}</span>{t}</div>)}</div>
+          <button className="av-btn primary block" onClick={onRegister}>{I.user({ width: 17, height: 17 })} Crear mi cuenta</button>
+          <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onClose}>Ahora no</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1552,7 +1618,7 @@ function Done({ store, order, onHome }) {
 }
 
 /* ============================ VENDEDOR ============================ */
-function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSoldOut, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onAddColor, onEditOrder, onDeleteOrder }) {
+function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSoldOut, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onAddColor, onEditOrder, onDeleteOrder, onReloadProducts }) {
   const [tab, setTab] = useState("productos");
   const [drawer, setDrawer] = useState(false);
   const [focusSub, setFocusSub] = useState(null);
@@ -1575,6 +1641,8 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
       { k: "productos", l: "Productos", ic: "grid" },
       { k: "pedidos", l: "Pedidos", ic: "bag" },
       { k: "stock", l: "Stock", ic: "box" },
+      { k: "importar", l: "Importar productos", ic: "grid", subs: [{ label: "Subir hoja de cálculo", id: "subir" }, { label: "Lotes importados", id: "lotes" }] },
+      { k: "gestor", l: "Gestor de hoja de cálculo", ic: "grid" },
       { k: "categorias", l: "Categorías del menú", ic: "tag", subs: [{ label: "Categorías", id: "cats" }, { label: "Público de cada producto", id: "publico" }] },
     ] },
     { head: "Apariencia", items: [
@@ -1638,6 +1706,8 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
         {tab === "vista" && <SellerShowcase store={store} products={products} onUpdateStore={onUpdateStore} onToggle={onToggle} onSetOffer={onSetOffer} onSaveOrder={onSaveOrder} />}
         {tab === "productos" && <SellerProducts products={products} onToggle={onToggle} onSetSoldOut={onSetSoldOut} onCreate={onCreate} onDelete={onDeleteProduct} onEdit={onEditProduct} onAddColor={onAddColor} onSetStock={onSetStock} storeId={store.id} cats={store.theme.categories || []} />}
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
+        {tab === "importar" && <SellerImport store={store} products={products} onReload={onReloadProducts} focusSub={focusSub} />}
+        {tab === "gestor" && <SellerSheet store={store} products={products} onEditProduct={onEditProduct} onSetStock={onSetStock} onDeleteProduct={onDeleteProduct} onCreate={onCreate} onReload={onReloadProducts} />}
         {tab === "categorias" && <SellerCategories products={products} store={store} onEdit={onEditProduct} onUpdateStore={onUpdateStore} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
         {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} focusSub={focusSub} />}
@@ -2594,6 +2664,316 @@ function PageWrap({ title, children }) {
     </div>
   );
 }
+
+const IMPORT_MAX = 500;
+const IMPORT_COLS = ["ID_INTERNO", "Nombre", "Precio", "Categoria", "Publico", "Descripcion", "Beneficio_1", "Beneficio_2", "Beneficio_3", "Emoji", "Destacado", "Nuevo", "Metodo_Stock", "Stock_simple", "Stock_S", "Stock_M", "Stock_L", "Foto_1_URL", "Foto_2_URL", "Color_1_Nombre", "Color_1_Hex"];
+function importNum(s) { const n = parseInt(String(s == null ? "" : s).replace(/[^\d]/g, ""), 10); return isNaN(n) ? 0 : n; }
+function importAudKey(label) { const t = (label || "").trim().toLowerCase(); const f = AUDIENCES.find(([k, l]) => k === t || l.toLowerCase() === t); return f ? f[0] : null; }
+function parseCSV(text) {
+  const rows = []; let row = []; let cur = ""; let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cur); cur = ""; }
+    else if (c === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+    else if (c === "\r") { /* skip */ }
+    else cur += c;
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter((r) => r.some((x) => (x || "").trim() !== ""));
+}
+function rowToProduct(r, batchId) {
+  const audience = (r.Publico || "").split(/[;,/|]/).map((x) => importAudKey(x)).filter(Boolean);
+  const benefits = [r.Beneficio_1, r.Beneficio_2, r.Beneficio_3].map((x) => (x || "").trim()).filter(Boolean);
+  const images = [r.Foto_1_URL, r.Foto_2_URL].map((x) => (x || "").trim()).filter(Boolean);
+  const colorName = (r.Color_1_Nombre || "").trim();
+  const colors = colorName ? [{ color: colorName, hex: (r.Color_1_Hex || "").trim() || "#888888" }] : [];
+  const sizeStock = {};
+  for (const [col, sz] of [["Stock_S", "S"], ["Stock_M", "M"], ["Stock_L", "L"]]) { if (r[col] !== undefined && String(r[col]).trim() !== "") sizeStock[sz] = importNum(r[col]); }
+  const metodo = (r.Metodo_Stock || "").trim().toLowerCase();
+  const isSimple = (metodo === "simple" || metodo === "") && Object.keys(sizeStock).length === 0;
+  let variants = []; let sizeStockField = {};
+  if (isSimple) {
+    variants = [{ color: colors[0]?.color || "Único", hex: colors[0]?.hex || "#888888", size: "Única", stock: importNum(r.Stock_simple) }];
+  } else {
+    sizeStockField = sizeStock;
+    const cols = colors.length ? colors : [{ color: "Único", hex: "#888888" }];
+    for (const c of cols) for (const sz of Object.keys(sizeStock)) variants.push({ color: c.color, hex: c.hex, size: sz, stock: 0 });
+  }
+  return {
+    product: {
+      name: (r.Nombre || "").trim(), normalPrice: importNum(r.Precio), offerPct: 0, category: (r.Categoria || "").trim(),
+      audience, description: (r.Descripcion || "").trim(), benefits, emoji: (r.Emoji || "📦").trim() || "📦",
+      featured: /^s[ií]?$/i.test((r.Destacado || "").trim()), active: false, images, sizeStock: sizeStockField,
+      importIdInterno: (r.ID_INTERNO || "").trim() || null, importBatchId: batchId, importedAt: new Date().toISOString(),
+    },
+    variants,
+  };
+}
+
+function SellerImport({ store, products, onReload, focusSub }) {
+  const [rows, setRows] = useState([]);
+  const [fileName, setFileName] = useState("");
+  const [errors, setErrors] = useState([]);
+  const [warns, setWarns] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [summary, setSummary] = useState(null);
+  const [batches, setBatches] = useState([]);
+  const [busyBatch, setBusyBatch] = useState(null);
+  const reloadBatches = () => listImportLogs(store.id).then(setBatches).catch(() => {});
+  useEffect(() => { reloadBatches(); }, [store.id]);
+  useEffect(() => { if (focusSub === "lotes") { const el = document.getElementById("sec-lotes"); if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 80); } }, [focusSub]);
+
+  const downloadTemplate = () => {
+    const ex = [
+      ["POLERA-001", "Polera básica algodón", "9990", "Camisetas", "Hombre;Mujer", "Polera 100% algodón, corte regular", "Algodón suave", "Lavable a máquina", "", "👕", "No", "Sí", "simple", "12", "", "", "", "https://tu-imagen.cl/polera.jpg", "", "Negro", "#111111"],
+      ["PANTY-001", "Panty translúcida 20D", "5990", "Pantys", "Mujer", "Panty 20 denier, tono natural", "Translúcida", "", "", "🧦", "Sí", "No", "total por talla", "", "10", "8", "5", "https://tu-imagen.cl/panty.jpg", "", "Natural", "#E8D9C5"],
+    ];
+    const esc = (v) => { const s = String(v == null ? "" : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const csv = "\uFEFF" + [IMPORT_COLS, ...ex].map((r) => r.map(esc).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "plantilla_productos.csv"; a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const onFile = async (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    setFileName(f.name); setSummary(null);
+    const text = await f.text();
+    const grid = parseCSV(text);
+    if (!grid.length) { setErrors([{ row: 0, msg: "El archivo está vacío." }]); setRows([]); return; }
+    const header = grid[0].map((h) => (h || "").trim());
+    if (!header.includes("Nombre") || !header.includes("Precio")) { setErrors([{ row: 1, msg: "Faltan columnas obligatorias. Usa la plantilla (debe tener al menos Nombre y Precio)." }]); setRows([]); return; }
+    const objs = grid.slice(1).map((cells) => { const o = {}; header.forEach((h, i) => { o[h] = cells[i] !== undefined ? cells[i] : ""; }); return o; });
+    const errs = []; const wrns = []; const seen = new Set();
+    objs.forEach((o, i) => {
+      const ln = i + 2;
+      if (!(o.Nombre || "").trim()) errs.push({ row: ln, msg: "Falta el Nombre." });
+      if (importNum(o.Precio) <= 0) errs.push({ row: ln, msg: `Precio inválido en “${(o.Nombre || "").trim() || "fila " + ln}”.` });
+      const id = (o.ID_INTERNO || "").trim();
+      if (id) { if (seen.has(id)) wrns.push({ row: ln, msg: `ID_INTERNO repetido: ${id}.` }); seen.add(id); }
+      else wrns.push({ row: ln, msg: `Sin ID_INTERNO en “${(o.Nombre || "").trim() || "fila " + ln}” (se podrá sincronizar peor luego).` });
+    });
+    if (objs.length > IMPORT_MAX) errs.push({ row: 0, msg: `Demasiadas filas (${objs.length}). El máximo por lote es ${IMPORT_MAX}.` });
+    setRows(objs); setErrors(errs); setWarns(wrns); e.target.value = "";
+  };
+
+  const validRows = rows.filter((o) => (o.Nombre || "").trim() && importNum(o.Precio) > 0);
+  const byCat = {}; validRows.forEach((o) => { const c = (o.Categoria || "Sin categoría").trim() || "Sin categoría"; byCat[c] = (byCat[c] || 0) + 1; });
+
+  const doImport = async () => {
+    if (!validRows.length || errors.length) return;
+    setImporting(true); setProgress(0);
+    try {
+      const batchNumber = batches.length + 1;
+      const log = await createImportLog(store.id, { fileName: fileName || "import.csv", productCount: validRows.length, batchNumber });
+      let done = 0;
+      for (const o of validRows) {
+        const { product, variants } = rowToProduct(o, log.id);
+        await createProduct(store.id, product, variants);
+        done++; setProgress(done);
+      }
+      setSummary({ count: done, batchNumber });
+      setRows([]); setErrors([]); setWarns([]); setFileName("");
+      reloadBatches(); onReload && onReload();
+    } catch (err) { alert("Error al importar: " + err.message); }
+    finally { setImporting(false); }
+  };
+
+  const undoBatch = async (b) => {
+    if (!window.confirm(`¿Deshacer el lote #${b.batch_number}? Se eliminarán ${b.product_count} productos importados (los que no hayas editado siguen como borrador).`)) return;
+    setBusyBatch(b.id);
+    try { await deleteImportBatch(b.id); reloadBatches(); onReload && onReload(); }
+    catch (err) { alert(err.message); }
+    finally { setBusyBatch(null); }
+  };
+
+  return (
+    <PageWrap title="Importar productos">
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Sube una hoja de cálculo (CSV de Excel o Google Sheets) para crear muchos productos de una vez. Se crean en <b>borrador</b> (ocultos) para que los revises antes de publicar.</p>
+      <div id="sec-subir" className="av-srow2" style={{ borderTop: 0, flexWrap: "wrap", gap: 10 }}>
+        <button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={downloadTemplate}>{I.box({ width: 16, height: 16 })} Descargar plantilla CSV</button>
+        <label className="av-btn primary" style={{ flex: "none", padding: "11px 16px", cursor: "pointer" }}>{I.grid({ width: 16, height: 16 })} Subir archivo CSV<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={onFile} /></label>
+      </div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>En Excel: <b>Archivo → Guardar como → CSV UTF-8</b>. En Google Sheets: <b>Archivo → Descargar → CSV</b>. Columnas obligatorias: <b>Nombre</b> y <b>Precio</b>. Recomendado: <b>ID_INTERNO</b> (para sincronizar después). Método de stock: “simple” o “total por talla” (con Stock_S/M/L).</p>
+
+      {fileName && (
+        <div style={{ marginTop: 16 }}>
+          <div className="av-pagetitle2" style={{ fontSize: 15 }}>Previsualización · {fileName}</div>
+          <div className="av-acctstats" style={{ marginBottom: 10 }}>
+            <div className="av-acctstat"><div className="n">{validRows.length}</div><div className="l">Válidos</div></div>
+            <div className="av-acctstat"><div className="n" style={{ color: errors.length ? "#D33" : undefined }}>{errors.length}</div><div className="l">Errores</div></div>
+            <div className="av-acctstat"><div className="n" style={{ color: warns.length ? "#C70" : undefined }}>{warns.length}</div><div className="l">Avisos</div></div>
+          </div>
+          {Object.keys(byCat).length > 0 && <p className="av-hint" style={{ textAlign: "left", margin: "0 0 8px" }}>Por categoría: {Object.entries(byCat).map(([c, n]) => `${c} (${n})`).join(" · ")}</p>}
+          {errors.length > 0 && <div style={{ background: "rgba(211,51,51,.08)", border: "1px solid rgba(211,51,51,.3)", borderRadius: 12, padding: 12, marginBottom: 10, fontSize: 12.5, color: "#B22", lineHeight: 1.6 }}>{errors.slice(0, 8).map((e, i) => <div key={i}>• {e.row ? "Fila " + e.row + ": " : ""}{e.msg}</div>)}{errors.length > 8 && <div>…y {errors.length - 8} más.</div>}</div>}
+          {warns.length > 0 && <div style={{ background: "rgba(200,120,0,.08)", border: "1px solid rgba(200,120,0,.3)", borderRadius: 12, padding: 12, marginBottom: 10, fontSize: 12.5, color: "#A60", lineHeight: 1.6 }}>{warns.slice(0, 5).map((w, i) => <div key={i}>• {w.row ? "Fila " + w.row + ": " : ""}{w.msg}</div>)}{warns.length > 5 && <div>…y {warns.length - 5} más.</div>}</div>}
+          {validRows.length > 0 && (
+            <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 12, marginBottom: 12 }}>
+              <table className="av-imptable"><thead><tr><th>Nombre</th><th>Precio</th><th>Categoría</th><th>Stock</th></tr></thead>
+                <tbody>{validRows.slice(0, 10).map((o, i) => { const sz = ["Stock_S", "Stock_M", "Stock_L"].filter((k) => String(o[k] || "").trim()).map((k) => k.split("_")[1] + ":" + importNum(o[k])); return (
+                  <tr key={i}><td>{o.Emoji} {(o.Nombre || "").trim()}</td><td>{CLP(importNum(o.Precio))}</td><td>{(o.Categoria || "—").trim()}</td><td>{sz.length ? sz.join(" ") : importNum(o.Stock_simple)}</td></tr>
+                ); })}</tbody>
+              </table>
+              {validRows.length > 10 && <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--muted)" }}>…y {validRows.length - 10} productos más.</div>}
+            </div>
+          )}
+          <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Todos se crearán en <b>borrador</b> (no visibles en tienda) hasta que los actives.</p>
+          <button className="av-btn primary block" disabled={importing || !validRows.length || errors.length > 0} onClick={doImport}>{importing ? `Importando… ${progress}/${validRows.length}` : `Importar ${validRows.length} productos en borrador`}</button>
+        </div>
+      )}
+
+      {summary && <div style={{ background: "rgba(20,160,80,.1)", border: "1px solid rgba(20,160,80,.35)", borderRadius: 14, padding: 14, marginTop: 14, color: "var(--ok)", fontWeight: 600 }}>✓ Importados {summary.count} productos (Lote #{summary.batchNumber}). Revísalos en <b>Productos</b> y actívalos cuando quieras.</div>}
+
+      <div id="sec-lotes" style={{ height: 1, background: "var(--line)", margin: "22px 0 14px" }} />
+      <div className="av-pagetitle2" style={{ fontSize: 15 }}>Lotes importados</div>
+      {batches.length === 0
+        ? <p className="av-hint" style={{ textAlign: "left" }}>Aún no has importado lotes.</p>
+        : batches.map((b) => (
+          <div key={b.id} className="av-orderc" style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1 }}><div className="av-name">Lote #{b.batch_number} · {b.product_count} productos</div><div className="av-cat" style={{ marginTop: 2 }}>{b.file_name} · {new Date(b.created_at).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" })}</div></div>
+            <button className="av-btn ghost" style={{ flex: "none", padding: "9px 14px", fontSize: 12 }} disabled={busyBatch === b.id} onClick={() => undoBatch(b)}>{busyBatch === b.id ? "…" : "Deshacer"}</button>
+          </div>
+        ))}
+    </PageWrap>
+  );
+}
+
+function SheetCell({ value, onSave, type = "text" }) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => { setV(value); }, [value]);
+  if (!editing) return <span className="av-shcell" onClick={() => setEditing(true)}>{type === "price" ? CLP(value) : (value !== "" && value != null ? value : <span style={{ color: "var(--muted)" }}>—</span>)}</span>;
+  const commit = () => { setEditing(false); const nv = (type === "number" || type === "price") ? importNum(v) : v; if (nv !== value) onSave(nv); };
+  return <input className="av-shinput" autoFocus type={type === "text" ? "text" : "tel"} inputMode={type === "text" ? undefined : "numeric"} value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } if (e.key === "Escape") { setV(value); setEditing(false); } }} />;
+}
+
+function SellerSheet({ store, products, onEditProduct, onSetStock, onDeleteProduct, onCreate, onReload }) {
+  const [fEstado, setFEstado] = useState("todos");
+  const [fCat, setFCat] = useState("todos");
+  const [fLote, setFLote] = useState("todos");
+  const [q, setQ] = useState("");
+  const [batches, setBatches] = useState([]);
+  const [photoOf, setPhotoOf] = useState(null);
+  const [descOf, setDescOf] = useState(null);
+  const [newUrl, setNewUrl] = useState("");
+  useEffect(() => { listImportLogs(store.id).then(setBatches).catch(() => {}); }, [store.id]);
+
+  const cats = Array.from(new Set([...(store.theme?.categories || []), ...products.map((p) => p.category).filter(Boolean), ...CAT_PRESETS]));
+  const list = products.filter((p) => {
+    if (fEstado === "pub" && !p.active) return false;
+    if (fEstado === "bor" && p.active) return false;
+    if (fCat !== "todos" && p.category !== fCat) return false;
+    if (fLote === "imp" && !p.importBatchId) return false;
+    if (fLote !== "todos" && fLote !== "imp" && p.importBatchId !== fLote) return false;
+    if (q.trim() && !p.name.toLowerCase().includes(q.trim().toLowerCase())) return false;
+    return true;
+  });
+
+  const exportCSV = () => {
+    const esc = (v) => { const s = String(v == null ? "" : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const lines = [IMPORT_COLS];
+    list.forEach((p) => {
+      const ss = p.sizeStock || {};
+      const colors = Array.from(new Map(p.variants.filter((v) => v.color && v.color !== "Único").map((v) => [v.color, v.hex])).entries());
+      const simple = p.variants.length === 1 && p.variants[0].size === "Única";
+      lines.push([
+        p.importIdInterno || "", p.name, p.normalPrice, p.category, (p.audience || []).map((a) => audName(a)).join(";"),
+        p.desc, p.benefits?.[0] || "", p.benefits?.[1] || "", p.benefits?.[2] || "", p.emoji,
+        p.featured ? "Sí" : "No", p.isNew ? "Sí" : "No", simple ? "simple" : "total por talla",
+        simple ? (p.variants[0]?.stock || 0) : "", ss.S ?? "", ss.M ?? "", ss.L ?? "",
+        (p.images || [])[0] || "", (p.images || [])[1] || "", colors[0]?.[0] || "", colors[0]?.[1] || "",
+      ]);
+    });
+    const csv = "\uFEFF" + lines.map((r) => r.map(esc).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `catalogo_${store.slug || "tienda"}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const duplicate = async (p) => {
+    const data = { name: p.name + " (copia)", category: p.category, audience: p.audience, description: p.desc, emoji: p.emoji, benefits: p.benefits, normalPrice: p.normalPrice, offerPct: p.offerPct, featured: false, active: false, images: p.images || [], sizeStock: p.sizeStock };
+    const vars = p.variants.map((v) => ({ color: v.color, hex: v.hex, size: v.size, stock: v.stock }));
+    try { await onCreate(data, vars); } catch (e) { alert(e.message); }
+  };
+  const del = (p) => { if (window.confirm(`¿Eliminar “${p.name}”? No se puede deshacer.`)) onDeleteProduct(p.id); };
+  const toggleAud = (p, k) => { const a = (p.audience || []).includes(k) ? p.audience.filter((x) => x !== k) : [...(p.audience || []), k]; onEditProduct(p.id, { audience: a }); };
+  const setImgs = (p, imgs) => onEditProduct(p.id, { images: imgs });
+
+  return (
+    <div className="av-anim av-pad" style={{ paddingTop: 14 }}>
+      <div className="av-pagetitle2">Gestor de hoja de cálculo</div>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Tu catálogo como una hoja editable. Toca cualquier celda para cambiarla; se guarda al instante.</p>
+      <div className="av-shfilters">
+        <div className="av-menusearch" style={{ margin: 0, flex: 1, minWidth: 160 }}><span>{I.search({ width: 15, height: 15 })}</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto…" />{q && <button onClick={() => setQ("")}>✕</button>}</div>
+        <select className="av-shsel" value={fEstado} onChange={(e) => setFEstado(e.target.value)}><option value="todos">Todos los estados</option><option value="pub">Publicados</option><option value="bor">Borradores</option></select>
+        <select className="av-shsel" value={fCat} onChange={(e) => setFCat(e.target.value)}><option value="todos">Todas las categorías</option>{cats.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+        <select className="av-shsel" value={fLote} onChange={(e) => setFLote(e.target.value)}><option value="todos">Todos los orígenes</option><option value="imp">Solo importados</option>{batches.map((b) => <option key={b.id} value={b.id}>Lote #{b.batch_number}</option>)}</select>
+        <button className="av-btn dark" style={{ flex: "none", padding: "9px 14px", fontSize: 12 }} onClick={exportCSV}>{I.box({ width: 14, height: 14 })} Exportar CSV</button>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px" }}>{list.length} de {products.length} productos</div>
+
+      <div className="av-shscroll">
+        <table className="av-shtable">
+          <thead><tr><th>Producto</th><th>Precio</th><th>Categoría</th><th>Stock</th><th>Público</th><th>★</th><th>Nuevo</th><th>Activo</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {list.map((p) => {
+              const simple = p.variants.length === 1 && p.variants[0].size === "Única";
+              return (
+                <tr key={p.id}>
+                  <td className="av-shname">
+                    <div className="av-shthumb" style={mediaStyle(p)}>{!(p.images && p.images.length) && <span>{p.emoji}</span>}</div>
+                    <div style={{ minWidth: 0 }}><SheetCell value={p.name} onSave={(v) => onEditProduct(p.id, { name: v })} /><button className="av-shdesc" onClick={() => setDescOf(p)}>✎ descripción</button></div>
+                  </td>
+                  <td><SheetCell value={p.normalPrice} type="price" onSave={(v) => onEditProduct(p.id, { normal_price: v })} /></td>
+                  <td><select className="av-shsel sm" value={p.category} onChange={(e) => onEditProduct(p.id, { category: e.target.value })}>{!cats.includes(p.category) && <option value={p.category}>{p.category}</option>}{cats.map((c) => <option key={c} value={c}>{c}</option>)}</select></td>
+                  <td>{simple ? <SheetCell value={p.variants[0].stock} type="number" onSave={(v) => onSetStock(p.variants[0].id, p.id, v)} /> : <span title="Stock por talla/color (edítalo en Stock)" style={{ color: "var(--muted)" }}>{totalStock(p)} ⓘ</span>}</td>
+                  <td><div className="av-shaud">{AUDIENCES.map(([k, l]) => <button key={k} title={l} className={"av-shaudb" + ((p.audience || []).includes(k) ? " on" : "")} onClick={() => toggleAud(p, k)}>{l[0]}</button>)}</div></td>
+                  <td style={{ textAlign: "center" }}><input type="checkbox" checked={!!p.featured} onChange={() => onEditProduct(p.id, { featured: !p.featured })} /></td>
+                  <td style={{ textAlign: "center" }}><input type="checkbox" checked={!!p.isNew} onChange={() => onEditProduct(p.id, { is_new: !p.isNew })} /></td>
+                  <td style={{ textAlign: "center" }}><button className={"av-toggle sm" + (p.active ? " on" : "")} onClick={() => onEditProduct(p.id, { active: !p.active })}><span className="kn" /></button></td>
+                  <td><div className="av-shact"><button title="Fotos" onClick={() => setPhotoOf(p)}>🖼️</button><button title="Duplicar" onClick={() => duplicate(p)}>⧉</button><button title="Eliminar" onClick={() => del(p)}>🗑️</button></div></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {list.length === 0 && <div className="av-empty" style={{ padding: "30px 20px" }}>{I.box({ width: 28, height: 28 })}<div>No hay productos con estos filtros.</div></div>}
+      </div>
+
+      {photoOf && (
+        <div className="av-modal" onClick={() => { setPhotoOf(null); setNewUrl(""); }}>
+          <div className="av-sheet" onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Fotos · {photoOf.name}</div>
+            <p className="av-hint" style={{ textAlign: "left", marginTop: 0 }}>Agrega fotos por URL (las mismas que usaste al importar). Para subir desde el dispositivo, usa el editor del producto.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+              {(photoOf.images || []).map((u, i) => (
+                <div key={i} style={{ position: "relative" }}><div style={{ width: 64, height: 64, borderRadius: 10, backgroundSize: "cover", backgroundPosition: "center", backgroundImage: `url(${u})`, border: "1px solid var(--line)" }} /><button onClick={() => { const imgs = photoOf.images.filter((_, x) => x !== i); setImgs(photoOf, imgs); setPhotoOf({ ...photoOf, images: imgs }); }} style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 999, border: 0, background: "#D33", color: "#fff", cursor: "pointer", fontSize: 11 }}>✕</button></div>
+              ))}
+              {(!photoOf.images || photoOf.images.length === 0) && <span style={{ fontSize: 12, color: "var(--muted)" }}>Sin fotos.</span>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="av-input" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://tu-imagen.cl/foto.jpg" />
+              <button className="av-btn dark" style={{ flex: "none", padding: "0 16px" }} onClick={() => { const u = newUrl.trim(); if (!u) return; const imgs = [...(photoOf.images || []), u]; setImgs(photoOf, imgs); setPhotoOf({ ...photoOf, images: imgs }); setNewUrl(""); }}>Agregar</button>
+            </div>
+            <button className="av-btn primary block" style={{ marginTop: 12 }} onClick={() => { setPhotoOf(null); setNewUrl(""); }}>Listo</button>
+          </div>
+        </div>
+      )}
+
+      {descOf && (
+        <div className="av-modal" onClick={() => setDescOf(null)}>
+          <div className="av-sheet" onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Descripción · {descOf.name}</div>
+            <textarea className="av-input" rows={5} style={{ resize: "vertical", lineHeight: 1.5 }} defaultValue={descOf.desc} id="av-descedit" />
+            <button className="av-btn primary block" style={{ marginTop: 12 }} onClick={() => { const val = document.getElementById("av-descedit").value; onEditProduct(descOf.id, { description: val }); setDescOf(null); }}>Guardar descripción</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function SellerStore({ store, onUpdateStore, section = "datos", onGo, focusSub }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
