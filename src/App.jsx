@@ -334,6 +334,16 @@ const CSS = `
 .av-menusearch input{flex:1;border:0;background:none;outline:none;font-family:inherit;font-size:13.5px;color:var(--ink);padding:10px 0;}
 .av-menusearch button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px;}
 .av-flash{animation:av-flash 1.3s ease;border-radius:14px;}
+.av-acctwrap{padding-top:8px;}
+.av-acctcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;}
+.av-accthead{display:flex;align-items:center;gap:12px;}
+.av-accthead .ic{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);}
+.av-accthead .t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;}
+.av-accthead .d{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:2px;}
+.av-acctstats{display:flex;gap:10px;margin-bottom:6px;}
+.av-acctstat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;cursor:pointer;font-family:inherit;}
+.av-acctstat .n{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;}
+.av-acctstat .l{font-size:11.5px;color:var(--muted);margin-top:2px;display:inline-flex;align-items:center;gap:5px;}
 @keyframes av-flash{0%,100%{background:transparent}18%{background:var(--accent-soft)}}
 .av-drawerchev{font-size:16px;color:var(--muted);padding:2px 6px;border-radius:8px;transition:transform .2s ease;}
 .av-drawerchev.open{transform:rotate(180deg);}
@@ -988,8 +998,10 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const [tab, setTab] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [flow, setFlow] = useState(null);
-  const [cart, setCart] = useState([]);
-  const [favs, setFavs] = useState([]);
+  const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem(`av_cart_${store.id}`) || "[]"); } catch { return []; } });
+  const [favs, setFavs] = useState(() => { try { return JSON.parse(localStorage.getItem(`av_favs_${store.id}`) || "[]"); } catch { return []; } });
+  const [acct, setAcct] = useState(() => { try { return JSON.parse(localStorage.getItem(`av_acct_${store.id}`) || "null"); } catch { return null; } });
+  const [history, setHistory] = useState(() => { try { return JSON.parse(localStorage.getItem(`av_hist_${store.id}`) || "[]"); } catch { return []; } });
   const [filters, setFilters] = useState({ q: "", cat: "Todos", color: "Todos" });
   const [toast, setToast] = useState(null);
   const [lastOrder, setLastOrder] = useState(null);
@@ -1005,6 +1017,11 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 1600); };
+  useEffect(() => { try { localStorage.setItem(`av_cart_${store.id}`, JSON.stringify(cart)); } catch { /* noop */ } }, [cart, store.id]);
+  useEffect(() => { try { localStorage.setItem(`av_favs_${store.id}`, JSON.stringify(favs)); } catch { /* noop */ } }, [favs, store.id]);
+  useEffect(() => { try { localStorage.setItem(`av_hist_${store.id}`, JSON.stringify(history)); } catch { /* noop */ } }, [history, store.id]);
+  const saveAcct = (a) => { setAcct(a); try { localStorage.setItem(`av_acct_${store.id}`, JSON.stringify(a)); } catch { /* noop */ } };
+  const logoutAcct = () => { setAcct(null); try { localStorage.removeItem(`av_acct_${store.id}`); } catch { /* noop */ } };
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("pago");
     if (!p) return;
@@ -1023,6 +1040,9 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const keepShopping = () => setAdded(null);
   const placeOrder = async (buyer, comp, paymentMethod) => {
     const order = await onCreateOrder({ buyer, cart, total: cartTotal, comprobanteFile: comp?.file, paymentMethod });
+    const histEntry = { code: order.code, total: cartTotal, items: cart.map((i) => ({ name: i.name, qty: i.qty, price: i.price, color: i.color, size: i.size })), method: paymentMethod, date: Date.now(), status: paymentMethod === "mercadopago" ? "pendiente" : paymentMethod };
+    setHistory((h) => [histEntry, ...h].slice(0, 50));
+    if (!acct && buyer && buyer.name && buyer.phone) saveAcct({ name: buyer.name, phone: buyer.phone });
     if (paymentMethod === "mercadopago") {
       const items = cart.map((i) => ({ title: i.name + (i.size && i.size !== "Única" ? " " + i.size : "") + " (" + i.color + ")", quantity: i.qty, unit_price: i.price }));
       const pago = await crearPagoMP({ items, orderId: order.id, orderCode: order.code, payerName: buyer.name });
@@ -1038,7 +1058,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const sel = products.find((p) => p.id === detailId);
 
   if (flow === "done" && lastOrder) return <div className="av-screen"><Done store={store} order={lastOrder} onHome={() => { setFlow(null); setTab("home"); }} /></div>;
-  if (flow === "checkout") return <div className="av-screen"><Checkout store={store} total={cartTotal} onBack={() => setFlow(null)} onPlace={placeOrder} showToast={showToast} /></div>;
+  if (flow === "checkout") return <div className="av-screen"><Checkout store={store} total={cartTotal} onBack={() => setFlow(null)} onPlace={placeOrder} showToast={showToast} defaultBuyer={acct} /></div>;
   if (sel) return <div className="av-screen"><Detail store={store} product={sel} all={visible} fav={favs.includes(sel.id)} onFav={() => toggleFav(sel.id)} onBack={() => setDetailId(null)} onAdd={addToCart} openRelated={(id) => open(id)} />{added && <AddedModal item={added} count={cartCount} onGoCart={goCart} onKeep={keepShopping} />}</div>;
 
   return (
@@ -1046,8 +1066,9 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
       <div className="av-top" style={{ justifyContent: headerCfg(store).align === "center" ? "center" : undefined }}>
         <button className="av-burger" onClick={() => setDrawer(true)} title="Categorías">{I.menu({ width: 22, height: 22 })}</button>
         <div className="av-store" style={headerCfg(store).align === "center" ? { flex: 1, justifyContent: "center" } : undefined}><StoreLogo store={store} size={headerCfg(store).logoSize} radius={Math.round(headerCfg(store).logoSize * 0.3)} fontSize={Math.round(headerCfg(store).logoSize * 0.52)} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: headerCfg(store).titleSize, color: headerCfg(store).titleColor || undefined }}>{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
-        <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
-        {onSwitchMode && <button className="av-modeswitch" style={{ marginLeft: "auto" }} onClick={onSwitchMode} title="Volver al panel de vendedor">{I.user({ width: 15, height: 15 })} Vendedor</button>}
+        <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"], ["account", acct ? acct.name.split(" ")[0] : "Mi cuenta"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
+        <button className="av-iconbtn av-acctbtn" style={{ marginLeft: "auto" }} onClick={() => setTab("account")} title="Mi cuenta">{I.user({ width: 19, height: 19 })}{acct && <span className="dot" style={{ background: "var(--ok)", minWidth: 8, height: 8, padding: 0, top: -2, right: -2 }} />}</button>
+        {onSwitchMode && <button className="av-modeswitch" onClick={onSwitchMode} title="Volver al panel de vendedor">{I.user({ width: 15, height: 15 })} Vendedor</button>}
         {onSecretAdmin && <button onClick={onSecretAdmin} aria-hidden="true" tabIndex={-1} title="" style={{ position: "absolute", top: 0, right: 0, width: 52, height: 52, opacity: 0, background: "transparent", border: 0, padding: 0, margin: 0, zIndex: 50 }} />}
       </div>
       {drawer && <>
@@ -1080,6 +1101,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
           {tab === "search" && <Search products={visible} filters={filters} setFilters={setFilters} favs={favs} toggleFav={toggleFav} open={open} />}
           {tab === "favs" && <Favs products={visible.filter((p) => favs.includes(p.id))} favs={favs} toggleFav={toggleFav} open={open} goHome={() => setTab("home")} />}
           {tab === "cart" && <Cart cart={cart} setCart={setCart} total={cartTotal} onShop={() => setTab("home")} onCheckout={() => setFlow("checkout")} />}
+          {tab === "account" && <Account store={store} acct={acct} onSave={saveAcct} onLogout={logoutAcct} history={history} favCount={favs.length} goFavs={() => setTab("favs")} goHome={() => setTab("home")} />}
         </div>
         <DesktopFooter store={store} />
         {toast && <div className="av-toast">{toast}</div>}
@@ -1430,9 +1452,56 @@ function Cart({ cart, setCart, total, onShop, onCheckout }) {
     </div>
   );
 }
-function Checkout({ store, total, onBack, onPlace, showToast }) {
+function Account({ store, acct, onSave, onLogout, history, favCount, goFavs, goHome }) {
+  const [name, setName] = useState(acct?.name || "");
+  const [phone, setPhone] = useState(acct?.phone || "");
+  const [edit, setEdit] = useState(!acct);
+  const valid = name.trim().split(" ").filter(Boolean).length >= 2 && phone.replace(/\D/g, "").length >= 8;
+  const submit = () => { if (!valid) return; onSave({ name: name.trim(), phone: phone.replace(/\D/g, "") }); setEdit(false); };
+  const statusLabel = (s) => s === "efectivo" ? "Efectivo" : s === "pendiente" ? "Pago en proceso" : s === "mercadopago" ? "Mercado Pago" : "Transferencia";
+
+  if (edit) return (
+    <div className="av-anim av-acctwrap">
+      <div className="av-acctcard">
+        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">{acct ? "Editar mi cuenta" : "Crear mi cuenta"}</div><div className="d">Guarda tus favoritos, tu carrito y tu historial de compras en este dispositivo.</div></div></div>
+        <div className="av-field"><label>Nombre y apellido</label><input className="av-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: María Pérez" /></div>
+        <div className="av-field"><label>Teléfono (WhatsApp)</label><input className="av-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="56912345678" /></div>
+        <button className="av-btn primary block" disabled={!valid} onClick={submit}>{acct ? "Guardar cambios" : "Crear mi cuenta"}</button>
+        {acct && <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={() => setEdit(false)}>Cancelar</button>}
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Tus datos se guardan solo en este dispositivo y sirven para agilizar tu compra. No se publican.</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="av-anim av-acctwrap">
+      <div className="av-acctcard">
+        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">Hola, {acct.name.split(" ")[0]} 👋</div><div className="d">{I.wa({ width: 12, height: 12 })} {acct.phone}</div></div><button className="av-minitag" onClick={() => setEdit(true)}>Editar</button></div>
+      </div>
+      <div className="av-acctstats">
+        <button className="av-acctstat" onClick={goFavs}><div className="n">{favCount}</div><div className="l">{I.heart(false)({ width: 13, height: 13 })} Favoritos</div></button>
+        <div className="av-acctstat"><div className="n">{history.length}</div><div className="l">{I.bag({ width: 13, height: 13 })} Compras</div></div>
+      </div>
+      <div className="av-shead"><h3>Historial de compras</h3></div>
+      {history.length === 0
+        ? <div className="av-empty">{I.bag({ width: 30, height: 30 })}<div>Aún no tienes compras.</div><button className="av-btn dark" style={{ flex: "none", padding: "11px 22px", marginTop: 6 }} onClick={goHome}>Explorar productos</button></div>
+        : history.map((h, i) => (
+          <div key={i} className="av-orderc" style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div><div className="av-name" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>{h.code}</div><div className="av-cat" style={{ marginTop: 2 }}>{new Date(h.date).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" })}</div></div>
+              <div style={{ textAlign: "right" }}><div className="av-price">{CLP(h.total)}</div><span className="av-tag" style={{ marginTop: 2 }}>{statusLabel(h.status)}</span></div>
+            </div>
+            <div className="av-cat">{h.items.map((it) => `${it.name}${it.size && it.size !== "Única" ? " (" + it.size + ")" : ""} ×${it.qty}`).join(" · ")}</div>
+          </div>
+        ))}
+      <button className="av-btn ghost block" style={{ marginTop: 12 }} onClick={onLogout}>Cerrar sesión</button>
+    </div>
+  );
+}
+
+function Checkout({ store, total, onBack, onPlace, showToast, defaultBuyer }) {
   const [copied, setCopied] = useState(null);
-  const [name, setName] = useState(""); const [phone, setPhone] = useState("");
+  const [name, setName] = useState(defaultBuyer?.name || ""); const [phone, setPhone] = useState(defaultBuyer?.phone || "");
   const [sending, setSending] = useState(false);
   const [method, setMethod] = useState("transferencia");
   const copy = (k, v) => { if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {}); setCopied(k); showToast("Copiado"); setTimeout(() => setCopied(null), 1400); };
