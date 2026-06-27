@@ -50,7 +50,40 @@ const CSS = `
   .av-pad{max-width:780px;margin-left:auto;margin-right:auto;}
   .av-tabbar{justify-content:center;}
   .av-h1{font-size:30px;letter-spacing:-0.5px;}
-  .av-card:hover{transform:translateY(-3px);}
+  /* Hero de escritorio */
+  .av-dhero{position:relative;border-radius:26px;overflow:hidden;margin:28px 0 18px;padding:64px 56px;color:#fff;box-shadow:0 30px 70px -30px rgba(20,20,50,.45);}
+  .av-dhero-in{position:relative;max-width:620px;}
+  .av-dhero-eyebrow{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;opacity:.92;}
+  .av-dhero-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:52px;line-height:1.04;letter-spacing:-1.5px;margin:12px 0 0;text-shadow:0 2px 30px rgba(0,0,0,.25);}
+  .av-dhero-sub{font-size:18px;opacity:.95;margin:16px 0 0;max-width:520px;line-height:1.5;}
+  .av-dhero-cta{display:flex;gap:12px;margin-top:28px;}
+  .av-dhero-meta{display:flex;gap:20px;margin-top:24px;font-size:13px;font-weight:600;opacity:.92;}
+  .av-dhero-meta span{display:inline-flex;align-items:center;gap:6px;}
+  /* Props de confianza */
+  .av-dprops{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:6px 0 26px;}
+  .av-dprop{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;}
+  .av-dprop .ic{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);}
+  .av-dprop .t{font-weight:700;font-size:14px;}
+  .av-dprop .d{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45;}
+  /* Banda CTA */
+  .av-dcta{display:flex;align-items:center;justify-content:space-between;gap:24px;border-radius:22px;padding:36px 44px;color:#fff;margin:36px 0 10px;box-shadow:0 24px 60px -28px rgba(20,20,50,.5);}
+  .av-dcta .t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;letter-spacing:-.5px;}
+  .av-dcta .d{font-size:15px;opacity:.95;margin-top:6px;}
+  /* Footer */
+  .av-dfooter{border-top:1px solid var(--line);background:var(--surface);margin-top:44px;}
+  .av-dfooter-in{max-width:1120px;margin:0 auto;padding:48px 32px 28px;display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:32px;}
+  .av-dfooter .col{display:flex;flex-direction:column;gap:8px;}
+  .av-dfooter .brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;}
+  .av-dfooter .col p{font-size:13px;color:var(--muted);line-height:1.5;max-width:340px;}
+  .av-dfooter .h{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);margin-bottom:2px;}
+  .av-dfooter .col a,.av-dfooter .col span{font-size:13px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+  .av-dfooter .col a:hover{color:var(--accent);}
+  .av-dfooter-bottom{border-top:1px solid var(--line);max-width:1120px;margin:0 auto;padding:16px 32px;font-size:12px;color:var(--muted);}
+  /* Grilla y tarjetas más premium */
+  .av-grid{grid-template-columns:repeat(auto-fill,minmax(232px,1fr));}
+  .av-card{transition:transform .16s ease, box-shadow .16s ease;}
+  .av-card:hover{transform:translateY(-4px);box-shadow:0 22px 44px -22px rgba(20,20,50,.4);}
+  .av-topnavb{font-size:14px;}
 }
 /* ---- Estilo vidrio (iOS) ---- */
 .av-glass{background:var(--shop-bg, #EFEFF3);--ink2:#15151B;--muted:#2A2A33;}
@@ -1048,6 +1081,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
           {tab === "favs" && <Favs products={visible.filter((p) => favs.includes(p.id))} favs={favs} toggleFav={toggleFav} open={open} goHome={() => setTab("home")} />}
           {tab === "cart" && <Cart cart={cart} setCart={setCart} total={cartTotal} onShop={() => setTab("home")} onCheckout={() => setFlow("checkout")} />}
         </div>
+        <DesktopFooter store={store} />
         {toast && <div className="av-toast">{toast}</div>}
         {added && <AddedModal item={added} count={cartCount} onGoCart={goCart} onKeep={keepShopping} />}
       </div>
@@ -1122,20 +1156,101 @@ function CatView({ store, products, filter, favs, toggleFav, open, onClear }) {
   );
 }
 
+function useIsDesktop() {
+  const [d, setD] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width:1024px)").matches);
+  useEffect(() => {
+    const m = window.matchMedia("(min-width:1024px)");
+    const f = () => setD(m.matches);
+    m.addEventListener ? m.addEventListener("change", f) : m.addListener(f);
+    return () => { m.removeEventListener ? m.removeEventListener("change", f) : m.removeListener(f); };
+  }, []);
+  return d;
+}
+
+function DesktopHero({ store, onShop }) {
+  const s = (store.slides && store.slides[0]) || { eyebrow: store.promo.eyebrow, title: store.promo.title, sub: store.promo.sub };
+  const a = s.a || store.logoA, b = s.b || store.logoB;
+  const heroBg = s.img
+    ? { backgroundImage: `linear-gradient(115deg, ${hexA(a, 0.78)} 0%, ${hexA(b, 0.42)} 55%, rgba(0,0,0,.15) 100%), url(${s.img})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : grad(a, b);
+  const wa = store.whatsapp ? `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}! Tengo una consulta.`)}` : null;
+  return (
+    <section className="av-dhero" style={heroBg}>
+      <div className="av-dhero-in">
+        <div className="av-dhero-eyebrow">{s.eyebrow || "Bienvenido"}</div>
+        <h1 className="av-dhero-title">{s.title || store.name}</h1>
+        {s.sub && <p className="av-dhero-sub">{s.sub}</p>}
+        <div className="av-dhero-cta">
+          <button className="av-btn" style={{ background: "#fff", color: "#15151B", flex: "none", padding: "14px 26px" }} onClick={onShop}>{I.bag({ width: 18, height: 18 })} Ver productos</button>
+          {wa && <a className="av-btn wa" href={wa} target="_blank" rel="noreferrer" style={{ textDecoration: "none", color: "#fff", flex: "none", padding: "14px 24px" }}>{I.wa()} Escríbenos</a>}
+        </div>
+        <div className="av-dhero-meta">{store.sii && <span>{I.shield({ width: 14, height: 14 })} Verificado en el SII</span>}<span>{I.wa({ width: 14, height: 14 })} Atención por WhatsApp</span></div>
+      </div>
+    </section>
+  );
+}
+
+function DesktopValueProps({ store }) {
+  const items = [
+    [I.wa, "Atención por WhatsApp", "Coordinamos tu pedido y resolvemos dudas al instante."],
+    [I.card, "Pago flexible", store.sii && store.theme && store.theme.mp ? "Transferencia, efectivo o Mercado Pago." : "Transferencia o efectivo, simple y seguro."],
+    [I.bag, "Productos seleccionados", "Calidad y variedad pensadas para ti."],
+    [I.shield, "Compra con confianza", "Tus datos no se publican; tú decides."],
+  ];
+  return (
+    <section className="av-dprops">{items.map(([ic, t, d], i) => (
+      <div key={i} className="av-dprop"><span className="ic">{ic({ width: 22, height: 22 })}</span><div><div className="t">{t}</div><div className="d">{d}</div></div></div>
+    ))}</section>
+  );
+}
+
+function DesktopCTA({ store }) {
+  const wa = store.whatsapp ? `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}!`)}` : null;
+  return (
+    <section className="av-dcta" style={grad(store.logoA, store.logoB)}>
+      <div><div className="t">¿List@ para comprar?</div><div className="d">Escríbenos y coordinamos tu pedido por WhatsApp en minutos.</div></div>
+      {wa && <a className="av-btn" href={wa} target="_blank" rel="noreferrer" style={{ background: "#fff", color: "#15151B", flex: "none", padding: "14px 26px", textDecoration: "none" }}>{I.wa()} Contactar ahora</a>}
+    </section>
+  );
+}
+
+function DesktopFooter({ store }) {
+  const isDesktop = useIsDesktop();
+  if (!isDesktop) return null;
+  const wa = store.whatsapp ? `https://wa.me/${store.whatsapp}` : null;
+  return (
+    <footer className="av-dfooter">
+      <div className="av-dfooter-in">
+        <div className="col">
+          <div className="brand"><StoreLogo store={store} size={38} radius={12} fontSize={18} /><span>{store.name}</span></div>
+          <p>{store.sii ? "Tienda verificada en el SII." : "Vendedor independiente en Chile."} Atención y pedidos por WhatsApp.</p>
+        </div>
+        <div className="col"><div className="h">Contacto</div>{wa ? <a href={wa} target="_blank" rel="noreferrer">{I.wa({ width: 14, height: 14 })} WhatsApp</a> : <span>WhatsApp</span>}{store.slug && <span style={{ wordBreak: "break-all" }}>{window.location.origin}/?tienda={store.slug}</span>}</div>
+        <div className="col"><div className="h">Pagos</div><span>Transferencia bancaria</span><span>Efectivo al recibir</span>{store.sii && store.theme && store.theme.mp && <span>Mercado Pago</span>}</div>
+      </div>
+      <div className="av-dfooter-bottom">© {new Date().getFullYear()} {store.name} · Tienda online</div>
+    </footer>
+  );
+}
+
 function Home({ store, products, favs, toggleFav, open, goSearch }) {
   const featured = products.filter((p) => p.featured);
+  const isDesktop = useIsDesktop();
+  const scrollToGrid = () => { const el = document.getElementById("av-allprods"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
   return (
     <div className="av-anim">
-      <PromoBanner store={store} />
+      {isDesktop ? <DesktopHero store={store} onShop={scrollToGrid} /> : <PromoBanner store={store} />}
+      {isDesktop && <DesktopValueProps store={store} />}
       {featured.length > 0 && (<>
         <div className="av-shead"><h3>Destacados</h3><button className="all" onClick={goSearch}>Ver todo {I.chev()}</button></div>
         <div className="av-frow">{featured.map((p) => { const pct = off(p.price, p.was); return (
           <div key={p.id} className="av-feat" onClick={() => open(p.id)}><div className="av-featimg" style={mediaStyle(p)}>{!(p.images && p.images.length) && <span>{p.emoji}</span>}<div className="av-badges">{p.top && <span className="av-badge top">★ Más vendido</span>}{p.was && <span className="av-badge sale">-{pct}%</span>}</div><button className={"av-heart" + (favs.includes(p.id) ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleFav(p.id); }}>{I.heart(favs.includes(p.id))({ width: 17, height: 17 })}</button></div><div className="av-featbody"><span className="av-name">{p.name}</span><div className="av-rate" style={{ marginTop: 4 }}>{p.reviews > 0 ? <><Stars v={p.rating} size={12} /><span>{p.rating}</span><span className="c">({p.reviews})</span></> : <span className="c">Nuevo</span>}</div><div className="av-priceline"><span className="av-price">{CLP(p.price)}</span>{p.was && <span className="av-was">{CLP(p.was)}</span>}</div></div></div>
         ); })}</div>
       </>)}
-      <div className="av-shead"><h3>Todos los productos</h3></div>
+      <div className="av-shead" id="av-allprods"><h3>Todos los productos</h3></div>
       {products.length === 0 ? <div className="av-empty">{I.bag({ width: 32, height: 32 })}<div>Aún no hay productos publicados.</div></div>
         : <div className="av-grid">{products.map((p) => <Card key={p.id} p={p} fav={favs.includes(p.id)} onFav={() => toggleFav(p.id)} onClick={() => open(p.id)} />)}</div>}
+      {isDesktop && <DesktopCTA store={store} />}
     </div>
   );
 }
