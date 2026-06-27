@@ -293,7 +293,15 @@ const CSS = `
 @keyframes av-slideup{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .av-draweritem{display:flex;align-items:center;gap:12px;padding:13px 12px;border-radius:12px;border:0;background:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--ink);text-align:left;width:100%;}
 .av-draweritem:hover{background:var(--soft);}
-.av-draweritem.on{background:var(--accent-soft);color:var(--accent);}
+.av-draweritem.on{background:var(--accent-soft);color:var(--accent);position:relative;}
+.av-draweritem.on::before{content:"";position:absolute;left:-16px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--accent);}
+.av-mchip{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--soft);color:var(--muted);letter-spacing:.2px;white-space:nowrap;}
+.av-mchip.ok{background:color-mix(in srgb, var(--ok) 16%, transparent);color:var(--ok);}
+.av-menusearch{display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:0 11px;margin:6px 0 10px;color:var(--muted);}
+.av-menusearch input{flex:1;border:0;background:none;outline:none;font-family:inherit;font-size:13.5px;color:var(--ink);padding:10px 0;}
+.av-menusearch button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px;}
+.av-flash{animation:av-flash 1.3s ease;border-radius:14px;}
+@keyframes av-flash{0%,100%{background:transparent}18%{background:var(--accent-soft)}}
 .av-drawerchev{font-size:16px;color:var(--muted);padding:2px 6px;border-radius:8px;transition:transform .2s ease;}
 .av-drawerchev.open{transform:rotate(180deg);}
 .av-drawersubs{display:flex;flex-direction:column;gap:1px;margin:1px 0 4px;}
@@ -476,6 +484,7 @@ function mapStore(row) {
 /* ------------------------------- Iconos ----------------------------- */
 const I = {
   bag: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>),
+  grid: (p) => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>),
   home: (p) => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/></svg>),
   search: (p) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>),
   heart: (f) => (p) => (<svg width="18" height="18" viewBox="0 0 24 24" fill={f ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 12 5 5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>),
@@ -1358,20 +1367,41 @@ function Done({ store, order, onHome }) {
 function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSoldOut, onSetOffer, onSaveOrder, onSetStock, onCreate, onUpdateStore, onSetStatus, onUploadLogo, onSwitchMode, onDeleteProduct, onEditProduct, onAddColor, onEditOrder, onDeleteOrder }) {
   const [tab, setTab] = useState("productos");
   const [drawer, setDrawer] = useState(false);
-  const [exp, setExp] = useState(() => new Set());
+  const [focusSub, setFocusSub] = useState(null);
+  const [q, setQ] = useState("");
+  const [exp, setExp] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem("av_menu_exp") || "[]")); } catch { return new Set(); } });
   const handleLogout = async () => { await signOut(); onLogout(); };
-  const go = (k) => { setTab(k); setDrawer(false); };
-  const toggleExp = (k) => setExp((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const go = (k, sub) => { setTab(k); setFocusSub(sub || null); setDrawer(false); setQ(""); };
+  const toggleExp = (k) => setExp((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); try { localStorage.setItem("av_menu_exp", JSON.stringify([...n])); } catch { /* noop */ } return n; });
   const tabs = [["productos", "Productos"], ["pedidos", `Pedidos${orders.length ? " (" + orders.length + ")" : ""}`]];
-  const menu = [
-    { k: "vista", l: "Vista previa", ic: "eye", subs: ["Vista previa del catálogo"] },
-    { k: "stock", l: "Stock", ic: "box", subs: ["Existencias y cantidades"] },
-    { k: "categorias", l: "Categorías del menú", ic: "tag", subs: ["Público de cada producto", "Renombrar categorías"] },
-    { k: "marca", l: "Marca", ic: "palette", subs: ["Nombre y logo", "Encabezado", "Apariencia de la tienda", "Carrusel de ofertas"] },
-    { k: "seguridad", l: "Seguridad", ic: "shield", subs: ["Biometría (Face ID / huella)"] },
-    { k: "pagos", l: "Métodos de pago", ic: "card", subs: ["Mercado Pago", "Datos bancarios"] },
-    { k: "datos", l: "Datos de la tienda", ic: "store", subs: ["Formalización (SII)", "WhatsApp Business", "Dirección web (dominio)"] },
-    { k: "avisos", l: "Avisos por WhatsApp", ic: "message", subs: ["CallMeBot (número y apikey)", "Mensaje del aviso"] },
+  const statusFor = (k) => {
+    if (k === "pagos") return store.sii ? (store.theme && store.theme.mp ? { t: "MP activo", ok: true } : { t: "SII ✓", ok: true }) : { t: "Pendiente", ok: false };
+    if (k === "datos") return store.whatsapp ? { t: "WhatsApp ✓", ok: true } : { t: "Falta", ok: false };
+    if (k === "seguridad") return bioEnabled() ? { t: "Activa", ok: true } : null;
+    return null;
+  };
+  const matchItem = (it) => { const s = q.trim().toLowerCase(); if (!s) return true; if (it.l.toLowerCase().includes(s)) return true; return (it.subs || []).some((x) => x.label.toLowerCase().includes(s)); };
+  const groups = [
+    { head: "Tienda", items: [
+      { k: "vista", l: "Vista previa", ic: "eye" },
+      { k: "productos", l: "Productos", ic: "grid" },
+      { k: "pedidos", l: "Pedidos", ic: "bag" },
+      { k: "stock", l: "Stock", ic: "box" },
+      { k: "categorias", l: "Categorías del menú", ic: "tag", subs: [{ label: "Categorías", id: "cats" }, { label: "Público de cada producto", id: "publico" }] },
+    ] },
+    { head: "Apariencia", items: [
+      { k: "marca", l: "Marca y diseño", ic: "palette", subs: [{ label: "Nombre y logo", id: "nombre" }, { label: "Encabezado", id: "encabezado" }, { label: "Estilo y colores", id: "apariencia" }, { label: "Fondo desde el logo", id: "apariencia" }, { label: "Carrusel de ofertas", id: "carrusel" }] },
+    ] },
+    { head: "Ventas y pagos", items: [
+      { k: "pagos", l: "Cobros y formalización", ic: "card", subs: [{ label: "Datos bancarios", id: "bancarios" }, { label: "Formalización (SII)", id: "sii" }, { label: "Mercado Pago", id: "mp" }] },
+    ] },
+    { head: "Conexiones", items: [
+      { k: "datos", l: "Datos de la tienda", ic: "store", subs: [{ label: "WhatsApp Business", id: "whatsapp" }, { label: "Dirección web (dominio)", id: "dominio" }] },
+      { k: "avisos", l: "Avisos por WhatsApp", ic: "message", subs: [{ label: "Mensaje del aviso", id: "mensaje" }, { label: "CallMeBot", id: "callmebot" }] },
+    ] },
+    { head: "Seguridad", items: [
+      { k: "seguridad", l: "Seguridad y llaves", ic: "shield", subs: [{ label: "Biometría (Face ID / huella)", id: "biometria" }, { label: "Zona segura (tokens y APIs)", id: "vault" }] },
+    ] },
   ];
   return (
     <>
@@ -1379,18 +1409,29 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
         <div className="av-drawer-ov" onClick={() => setDrawer(false)} />
         <div className="av-drawer">
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><StoreLogo store={store} size={40} radius={12} fontSize={19} /><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 16 }}>{store.name}</div></div>
-          <div className="av-drawerhead">Menú</div>
-          {menu.map(({ k, l, ic, subs }) => {
-            const multi = subs.length > 1;
-            const open = exp.has(k);
+          <div className="av-menusearch"><span>{I.search ? I.search({ width: 15, height: 15 }) : null}</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar en el menú…" />{q && <button onClick={() => setQ("")} aria-label="Limpiar">✕</button>}</div>
+          {groups.map((g) => {
+            const items = g.items.filter(matchItem);
+            if (!items.length) return null;
             return (
-              <div key={k}>
-                <button className={"av-draweritem" + (tab === k ? " on" : "")} onClick={() => go(k)}>
-                  <span style={{ width: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{I[ic]({ width: 19, height: 19 })}</span>
-                  <span style={{ flex: 1 }}>{l}</span>
-                  {multi && <span className={"av-drawerchev" + (open ? " open" : "")} onClick={(e) => { e.stopPropagation(); toggleExp(k); }}>▾</span>}
-                </button>
-                {multi && open && <div className="av-drawersubs">{subs.map((s) => <button key={s} className="av-drawersub" onClick={() => go(k)}>{s}</button>)}</div>}
+              <div key={g.head}>
+                <div className="av-drawerhead">{g.head}</div>
+                {items.map((it) => {
+                  const multi = it.subs && it.subs.length > 1;
+                  const open = exp.has(it.k) || (!!q.trim() && multi);
+                  const st = statusFor(it.k);
+                  return (
+                    <div key={it.k}>
+                      <button className={"av-draweritem" + (tab === it.k ? " on" : "")} onClick={() => go(it.k)}>
+                        <span style={{ width: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{I[it.ic]({ width: 19, height: 19 })}</span>
+                        <span style={{ flex: 1 }}>{it.l}</span>
+                        {st && <span className={"av-mchip" + (st.ok ? " ok" : "")}>{st.t}</span>}
+                        {multi && <span className={"av-drawerchev" + (open ? " open" : "")} onClick={(e) => { e.stopPropagation(); toggleExp(it.k); }}>▾</span>}
+                      </button>
+                      {multi && open && <div className="av-drawersubs">{it.subs.filter((s) => { const q2 = q.trim().toLowerCase(); return !q2 || it.l.toLowerCase().includes(q2) || s.label.toLowerCase().includes(q2); }).map((s) => <button key={s.id + s.label} className="av-drawersub" onClick={() => go(it.k, s.id)}>{s.label}</button>)}</div>}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -1411,11 +1452,11 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
         {tab === "stock" && <SellerInventory products={products} onSetStock={onSetStock} />}
         {tab === "categorias" && <SellerCategories products={products} store={store} onEdit={onEditProduct} onUpdateStore={onUpdateStore} />}
         {tab === "pedidos" && <SellerOrders orders={orders} onSetStatus={onSetStatus} stockLog={stockLog} onEditOrder={onEditOrder} onDeleteOrder={onDeleteOrder} />}
-        {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} />}
-        {tab === "seguridad" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="seguridad" onGo={go} />}
-        {tab === "pagos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="pagos" onGo={go} />}
-        {tab === "datos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="datos" onGo={go} />}
-        {tab === "avisos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="avisos" onGo={go} />}
+        {tab === "marca" && <SellerBrand store={store} onUpdateStore={onUpdateStore} onUploadLogo={onUploadLogo} focusSub={focusSub} />}
+        {tab === "seguridad" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="seguridad" onGo={go} focusSub={focusSub} />}
+        {tab === "pagos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="pagos" onGo={go} focusSub={focusSub} />}
+        {tab === "datos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="datos" onGo={go} focusSub={focusSub} />}
+        {tab === "avisos" && <SellerStore store={store} onUpdateStore={onUpdateStore} section="avisos" onGo={go} focusSub={focusSub} />}
       </div>
     </>
   );
@@ -1978,16 +2019,17 @@ function BrandSection({ id, title, openSet, setOpenSet, children }) {
   const open = openSet.has(id);
   const toggle = () => setOpenSet((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div id={"brand-" + id} style={{ marginBottom: 10 }}>
       <button className="av-acc" onClick={toggle}><div style={{ textAlign: "left" }}><div className="av-accmon">{title}</div></div><span className={"av-accarrow" + (open ? " open" : "")}>▾</span></button>
       {open && <div style={{ marginTop: 12 }}>{children}</div>}
     </div>
   );
 }
 
-function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
+function SellerBrand({ store, onUpdateStore, onUploadLogo, focusSub }) {
   const [busy, setBusy] = useState(false);
   const [openSet, setOpenSet] = useState(() => new Set(["nombre"]));
+  useEffect(() => { if (!focusSub) return; setOpenSet((s) => new Set([...s, focusSub])); const tmo = setTimeout(() => { const el = document.getElementById("brand-" + focusSub); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("av-flash"); setTimeout(() => el.classList.remove("av-flash"), 1300); } }, 90); return () => clearTimeout(tmo); }, [focusSub]);
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const t = store.theme || {};
   const upT = (k, v) => onUpdateStore({ ...store, theme: { ...t, [k]: v } });
@@ -2093,7 +2135,7 @@ function SellerBrand({ store, onUpdateStore, onUploadLogo }) {
   );
 }
 
-function SellerNotify({ store }) {
+function SellerNotify({ store, onGo }) {
   const [phone, setPhone] = useState("");
   const [apikey, setApikey] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -2107,32 +2149,72 @@ function SellerNotify({ store }) {
       finally { setLoaded(true); }
     })();
   }, [store.id]);
-  const save = async () => {
+  const configured = !!(phone && apikey);
+  const saveMsg = async () => {
     setSaving(true); setSaved(false);
-    try { await saveStoreNotify(store.id, { phone: phone.replace(/\D/g, ""), apikey: apikey.trim(), template: mensaje.trim() }); setSaved(true); }
+    try { await saveStoreNotify(store.id, { phone, apikey, template: mensaje.trim() }); setSaved(true); }
     catch (e) { alert(e.message); }
     finally { setSaving(false); }
   };
   return (
     <>
-      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Recibe un WhatsApp automático cada vez que entra un pedido. Necesitas activar CallMeBot (gratis) y pegar aquí tu número y tu apikey.</p>
-      <button className="av-btn ghost block" style={{ marginBottom: 12 }} onClick={() => setOpen(!open)}>{open ? "Ocultar instrucciones" : "📖 Ver cómo activar el chatbot"}</button>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 10px" }}>Recibe un WhatsApp automático cada vez que entra un pedido. El número y la apikey (CallMeBot) se guardan en la <b>Zona segura</b>.</p>
+      <div id="sec-callmebot" className="av-srow2" style={{ borderTop: 0 }}>
+        <div>{I.lock({ width: 20, height: 20, style: { color: configured ? "var(--ok)" : "var(--muted)" } })}</div>
+        <div style={{ flex: 1 }}><div className="av-name">CallMeBot (número y apikey)</div><div className="av-cat" style={{ marginTop: 2 }}>{loaded ? (configured ? "Configurado ✓" : "No configurado") : "Cargando…"}</div></div>
+      </div>
+      {onGo && <button className="av-btn dark block" style={{ marginTop: 10 }} onClick={() => onGo("seguridad", "vault")}>{I.lock({ width: 16, height: 16 })} Configurar en Zona segura</button>}
+      <button className="av-btn ghost block" style={{ margin: "12px 0" }} onClick={() => setOpen(!open)}>{open ? "Ocultar instrucciones" : "📖 Ver cómo activar el chatbot"}</button>
       {open && (
         <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: 14, marginBottom: 14, fontSize: 13, color: "var(--ink2)", lineHeight: 1.6 }}>
-          <b>Paso 1.</b> En el teléfono donde quieres recibir los avisos, abre <b>callmebot.com/blog/free-api-whatsapp-messages</b>. Ahí aparece el número actual del bot (cambia seguido).<br />
+          <b>Paso 1.</b> En el teléfono donde quieres recibir los avisos, abre <b>callmebot.com/blog/free-api-whatsapp-messages</b>.<br />
           <b>Paso 2.</b> Agrega ese número a tus contactos y, por WhatsApp, mándale: <i>I allow callmebot to send me messages</i><br />
-          <b>Paso 3.</b> El bot te responde con tu <b>APIKEY</b> (un número).<br />
-          <b>Paso 4.</b> Escribe abajo tu número (con código de país, sin “+”) y ese apikey, y guarda. ¡Listo!
+          <b>Paso 3.</b> El bot te responde con tu <b>APIKEY</b>.<br />
+          <b>Paso 4.</b> Pega el número y la apikey en la <b>Zona segura</b> (botón de arriba).
         </div>
       )}
-      <div className="av-field"><label>Tu número de WhatsApp (sin + ni espacios)</label><input className="av-input" value={phone} onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "")); setSaved(false); }} placeholder="56912345678" /></div>
-      <div className="av-field"><label>Tu APIKEY de CallMeBot</label><input className="av-input" value={apikey} onChange={(e) => { setApikey(e.target.value); setSaved(false); }} placeholder="1234567" /></div>
-      <div className="av-field"><label>Mensaje del aviso (opcional)</label>
+      <div id="sec-mensaje" className="av-field"><label>Mensaje del aviso (opcional)</label>
         <textarea className="av-input" rows={3} style={{ resize: "vertical", lineHeight: 1.5 }} value={mensaje} onChange={(e) => { setMensaje(e.target.value); setSaved(false); }} placeholder="Ej: ¡Nueva venta en mi tienda! 🎉 Revisa el pedido." />
         <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Este texto va al inicio del aviso, antes del detalle del pedido. Si lo dejas vacío, se usa el aviso estándar.</p>
       </div>
-      <button className="av-btn primary block" disabled={!loaded || saving} onClick={save}>{saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar avisos"}</button>
+      <button className="av-btn primary block" disabled={!loaded || saving} onClick={saveMsg}>{saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar mensaje"}</button>
     </>
+  );
+}
+
+function NotifyCredentials({ store }) {
+  const [phone, setPhone] = useState("");
+  const [apikey, setApikey] = useState("");
+  const [template, setTemplate] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try { const n = await getStoreNotify(store.id); setPhone(n.phone || ""); setApikey(n.apikey || ""); setTemplate(n.template || ""); } catch { /* noop */ }
+      finally { setLoaded(true); }
+    })();
+  }, [store.id]);
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    try { await saveStoreNotify(store.id, { phone: phone.replace(/\D/g, ""), apikey: apikey.trim(), template }); setSaved(true); }
+    catch (e) { alert(e.message); }
+    finally { setSaving(false); }
+  };
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><span style={{ color: "var(--wa)" }}>{I.message({ width: 20, height: 20 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>CallMeBot (avisos por WhatsApp)</div></div>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Número y apikey para recibir el WhatsApp de aviso cuando entra un pedido.</p>
+      <div className="av-field"><label>Tu número de WhatsApp (sin + ni espacios)</label><input className="av-input" value={phone} onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "")); setSaved(false); }} placeholder="56912345678" /></div>
+      <div className="av-field"><label>Tu APIKEY de CallMeBot</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="av-input" type={show ? "text" : "password"} value={apikey} onChange={(e) => { setApikey(e.target.value); setSaved(false); }} placeholder="1234567" />
+          <button className="av-btn ghost" style={{ flex: "none", padding: "0 14px" }} onClick={() => setShow(!show)}>{show ? "Ocultar" : "Ver"}</button>
+        </div>
+      </div>
+      <button className="av-btn primary block" disabled={!loaded || saving} onClick={save}>{saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar avisos"}</button>
+    </div>
   );
 }
 
@@ -2147,7 +2229,7 @@ function SellerPayments({ store, onUpdateStore, onGo }) {
       <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ color: "var(--muted)" }}>{I.lock({ width: 22, height: 22 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Se habilita al verificarte en el SII</div></div>
         <p className="av-hint" style={{ textAlign: "left", margin: 0 }}>Para cobrar con tarjeta por Mercado Pago necesitas estar verificado en el SII y poder emitir boletas (el comprobante de Mercado Pago sirve como boleta). Actívalo en Datos de la tienda.</p>
-        {onGo && <button className="av-btn dark block" onClick={() => onGo("datos")}>{I.store({ width: 16, height: 16 })} Ir a Datos de la tienda</button>}
+        {onGo && <button className="av-btn dark block" onClick={() => onGo("pagos", "sii")}>{I.shield({ width: 16, height: 16 })} Verifícate en el SII (aquí mismo)</button>}
       </div>
     </div>
   );
@@ -2259,7 +2341,7 @@ function MPCredentials({ store }) {
   if (!sii) return (
     <div style={{ marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}><span style={{ color: "var(--muted)" }}>{I.lock({ width: 20, height: 20 })}</span><div style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15 }}>Credenciales de Mercado Pago</div></div>
-      <p className="av-hint" style={{ textAlign: "left", margin: 0 }}>Esta sección se habilita cuando tu tienda está verificada en el SII (Datos de la tienda). Mientras tanto, conectar Mercado Pago no está disponible.</p>
+      <p className="av-hint" style={{ textAlign: "left", margin: 0 }}>Esta sección se habilita cuando tu tienda está verificada en el SII (en Cobros y formalización). Mientras tanto, conectar Mercado Pago no está disponible.</p>
     </div>
   );
   return (
@@ -2311,26 +2393,30 @@ function PageWrap({ title, children }) {
   );
 }
 
-function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
+function SellerStore({ store, onUpdateStore, section = "datos", onGo, focusSub }) {
   const up = (k, v) => onUpdateStore({ ...store, [k]: v });
   const upBank = (k, v) => onUpdateStore({ ...store, bank: { ...store.bank, [k]: v } });
   const b = store.bank || {};
+  useEffect(() => { if (!focusSub) return; const el = document.getElementById("sec-" + focusSub); if (!el) return; const tmo = setTimeout(() => { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("av-flash"); setTimeout(() => el.classList.remove("av-flash"), 1300); }, 70); return () => clearTimeout(tmo); }, [focusSub, section]);
 
   if (section === "seguridad") return (
-    <PageWrap title="Seguridad">
-      <SecureArea store={store}>
-        <SellerSecurity store={store} />
-        <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
-        <MPCredentials store={store} />
-      </SecureArea>
+    <PageWrap title="Seguridad y llaves">
+      <div id="sec-biometria"><SellerSecurity store={store} /></div>
+      <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+      <div id="sec-vault">
+        <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Aquí se guardan tus <b>llaves y tokens</b> (Mercado Pago, CallMeBot y futuras). Para verlos o cambiarlos necesitas tu contraseña y tu biometría.</p>
+        <SecureArea store={store}>
+          <MPCredentials store={store} />
+          <div style={{ height: 1, background: "var(--line)", margin: "20px 0" }} />
+          <NotifyCredentials store={store} />
+        </SecureArea>
+      </div>
     </PageWrap>
   );
 
   if (section === "pagos") return (
-    <PageWrap title="Métodos de pago">
-      <SellerPayments store={store} onUpdateStore={onUpdateStore} onGo={onGo} />
-      <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
-      <div className="av-field" style={{ paddingTop: 0 }}><label>Datos bancarios (para transferencia)</label></div>
+    <PageWrap title="Cobros y formalización">
+      <div id="sec-bancarios" className="av-field" style={{ paddingTop: 0 }}><label>Datos bancarios (para transferencia)</label></div>
       <div className="av-field"><label>Banco</label>
         <select className="av-input" value={b.banco || ""} onChange={(e) => upBank("banco", e.target.value)}>
           <option value="">Selecciona tu banco…</option>
@@ -2347,18 +2433,22 @@ function SellerStore({ store, onUpdateStore, section = "datos", onGo }) {
       <div className="av-field"><label>RUT del titular</label><input className="av-input" value={b.rut || ""} onChange={(e) => upBank("rut", e.target.value)} placeholder="12.345.678-9" /></div>
       <div className="av-field"><label>Titular</label><input className="av-input" value={b.titular || ""} onChange={(e) => upBank("titular", e.target.value)} placeholder="Nombre y apellido" /></div>
       <div className="av-field"><label>Correo</label><input className="av-input" type="email" value={b.correo || ""} onChange={(e) => upBank("correo", e.target.value)} placeholder="correo@ejemplo.cl" /></div>
+      <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+      <div id="sec-sii" className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Verificado en el SII (puedo emitir boletas)</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Sello “Verificado en el SII” + habilita Mercado Pago" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Actívalo solo si hiciste “inicio de actividades” en el SII y puedes emitir boletas. Al activarlo se habilita el cobro con <b>Mercado Pago</b> (su comprobante sirve como boleta). Si no estás verificado, Mercado Pago permanece oculto para ti y para tus clientes.</p>
+      <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+      <div id="sec-mp"><SellerPayments store={store} onUpdateStore={onUpdateStore} onGo={onGo} /></div>
     </PageWrap>
   );
 
-  if (section === "avisos") return <PageWrap title="Avisos por WhatsApp"><SellerNotify store={store} /></PageWrap>;
+  if (section === "avisos") return <PageWrap title="Avisos por WhatsApp"><SellerNotify store={store} onGo={onGo} /></PageWrap>;
 
   return (
     <PageWrap title="Datos de la tienda">
-      <div className="av-srow2" style={{ borderTop: 0 }}><div>{I.shield({ width: 20, height: 20, style: { color: store.sii ? "var(--ok)" : "var(--muted)" } })}</div><div style={{ flex: 1 }}><div className="av-name">Verificado en el SII (puedo emitir boletas)</div><div className="av-cat" style={{ marginTop: 2 }}>{store.sii ? "Sello “Verificado en el SII” + habilita Mercado Pago" : "Muestra “Vendedor independiente”"}</div></div><button className={"av-toggle" + (store.sii ? " on" : "")} onClick={() => up("sii", !store.sii)}><span className="kn" /></button></div>
-      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Actívalo solo si hiciste “inicio de actividades” en el SII y puedes emitir boletas. Al activarlo se habilita el cobro con <b>Mercado Pago</b> (su comprobante sirve como boleta). Si no estás verificado, Mercado Pago permanece oculto para ti y para tus clientes.</p>
-      <div className="av-field" style={{ paddingTop: 14 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
+      <div id="sec-whatsapp" className="av-field" style={{ paddingTop: 0 }}><label>WhatsApp Business (sin + ni espacios)</label><input className="av-input" value={store.whatsapp} onChange={(e) => up("whatsapp", e.target.value.replace(/\D/g, ""))} placeholder="56912345678" /></div>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Es el número con el que tus clientes coordinan el pedido y te envían el comprobante. La verificación del SII y Mercado Pago ahora están en <b>Cobros y formalización</b>.</p>
       <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
-      <div className="av-field" style={{ paddingTop: 0 }}><label>Dirección web — nombre corto (enlace gratis)</label>
+      <div id="sec-dominio" className="av-field" style={{ paddingTop: 0 }}><label>Dirección web — nombre corto (enlace gratis)</label>
         <input className="av-input" value={store.slug || ""} onChange={(e) => up("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40))} placeholder="gamerstock" />
         {store.slug
           ? <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>Tu enlace gratis para compartir:<br /><b style={{ wordBreak: "break-all" }}>{window.location.origin}/?tienda={store.slug}</b></p>
