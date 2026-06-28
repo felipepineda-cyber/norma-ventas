@@ -43,7 +43,7 @@ const CSS = `
   .av-topnav{display:flex;gap:4px;margin-left:auto;}
   .av-storename{font-size:17px;}
   /* Contenido del comprador: ancho y aireado */
-  .av-pad.av-buyerpad{max-width:1120px;margin-left:auto;margin-right:auto;width:100%;padding-left:32px;padding-right:32px;}
+  .av-pad.av-buyerpad{max-width:1320px;margin-left:auto;margin-right:auto;width:100%;padding-left:32px;padding-right:32px;}
   .av-promo{margin:28px 0 14px;border-radius:22px;}
   .av-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:24px;padding:8px 0 48px;}
   .av-sheadrow,.av-shead{padding-left:0;padding-right:0;}
@@ -72,16 +72,16 @@ const CSS = `
   .av-dcta .d{font-size:15px;opacity:.95;margin-top:6px;}
   /* Footer */
   .av-dfooter{border-top:1px solid var(--line);background:var(--surface);margin-top:44px;}
-  .av-dfooter-in{max-width:1120px;margin:0 auto;padding:48px 32px 28px;display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:32px;}
+  .av-dfooter-in{max-width:1320px;margin:0 auto;padding:48px 32px 28px;display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:32px;}
   .av-dfooter .col{display:flex;flex-direction:column;gap:8px;}
   .av-dfooter .brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;}
   .av-dfooter .col p{font-size:13px;color:var(--muted);line-height:1.5;max-width:340px;}
   .av-dfooter .h{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);margin-bottom:2px;}
   .av-dfooter .col a,.av-dfooter .col span{font-size:13px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
   .av-dfooter .col a:hover{color:var(--accent);}
-  .av-dfooter-bottom{border-top:1px solid var(--line);max-width:1120px;margin:0 auto;padding:16px 32px;font-size:12px;color:var(--muted);}
+  .av-dfooter-bottom{border-top:1px solid var(--line);max-width:1320px;margin:0 auto;padding:16px 32px;font-size:12px;color:var(--muted);}
   /* Grilla y tarjetas más premium */
-  .av-grid{grid-template-columns:repeat(auto-fill,minmax(232px,1fr));}
+  .av-buyerpad .av-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;padding-bottom:48px;}
   .av-card{transition:transform .16s ease, box-shadow .16s ease;}
   .av-card:hover{transform:translateY(-4px);box-shadow:0 22px 44px -22px rgba(20,20,50,.4);}
   .av-topnavb{font-size:14px;}
@@ -346,6 +346,9 @@ const CSS = `
 .av-acctstat .n{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;}
 .av-acctstat .l{font-size:11.5px;color:var(--muted);margin-top:2px;display:inline-flex;align-items:center;gap:5px;}
 .av-imptable{width:100%;border-collapse:collapse;font-size:12.5px;}
+.av-modeseg{display:flex;gap:4px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:12px;}
+.av-modeseg .seg{flex:1;border:0;background:none;padding:9px 10px;border-radius:9px;font-family:inherit;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer;}
+.av-modeseg .seg.on{background:var(--surface);color:var(--accent);box-shadow:0 2px 8px -3px rgba(20,20,50,.3);}
 .av-imptable th{text-align:left;padding:9px 12px;background:var(--soft);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
 .av-imptable td{padding:9px 12px;border-top:1px solid var(--line);white-space:nowrap;}
 .av-imptable td:first-child{white-space:normal;font-weight:600;}
@@ -371,15 +374,19 @@ const CSS = `
 .av-toggle.sm{width:38px;height:22px;}
 .av-toggle.sm .kn{width:16px;height:16px;}
 .av-toggle.sm.on .kn{transform:translateX(16px);}
-.av-welcome{padding:0;overflow:hidden;max-width:360px;}
+.av-welcome{padding:0;overflow:hidden;max-width:360px;position:relative;}
 .av-welcomehero{padding:26px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;color:#fff;text-align:center;}
 .av-welcometag{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
 .av-welcomebody{padding:18px 20px 20px;}
 .av-welcomebody .t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;}
 .av-welcomebody .d{font-size:13px;color:var(--muted);margin:4px 0 12px;}
 .av-welcomelist{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
-.av-welcomelist .row{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;}
+.av-welcomelist .row{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;font-weight:600;}
+.av-welcomelist .row .bt{font-size:13.5px;font-weight:700;}
+.av-welcomelist .row .bd{font-size:12px;color:var(--muted);font-weight:400;margin-top:1px;line-height:1.4;}
 .av-welcomelist .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none;}
+.av-welcomex{position:absolute;top:10px;right:10px;z-index:2;width:30px;height:30px;border-radius:999px;border:0;background:rgba(0,0,0,.28);color:#fff;font-size:14px;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(4px);}
+.av-welcomex:hover{background:rgba(0,0,0,.45);}
 @keyframes av-flash{0%,100%{background:transparent}18%{background:var(--accent-soft)}}
 .av-drawerchev{font-size:16px;color:var(--muted);padding:2px 6px;border-radius:8px;transition:transform .2s ease;}
 .av-drawerchev.open{transform:rotate(180deg);}
@@ -1060,8 +1067,8 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   const saveAcct = (a) => { setAcct(a); try { localStorage.setItem(`av_acct_${store.id}`, JSON.stringify(a)); } catch { /* noop */ } };
   const logoutAcct = () => { setAcct(null); try { localStorage.removeItem(`av_acct_${store.id}`); } catch { /* noop */ } };
   const [welcome, setWelcome] = useState(false);
-  useEffect(() => { if (acct) return; let ok = false; try { ok = !localStorage.getItem(`av_welcome_${store.id}`); } catch { ok = false; } if (!ok) return; const t = setTimeout(() => setWelcome(true), 800); return () => clearTimeout(t); }, [acct, store.id]);
-  const closeWelcome = (goAcct) => { setWelcome(false); try { localStorage.setItem(`av_welcome_${store.id}`, "1"); } catch { /* noop */ } if (goAcct) { setTab("account"); document.querySelector(".av-screen")?.scrollTo(0, 0); } };
+  useEffect(() => { if (acct) return; const t = setTimeout(() => setWelcome(true), 700); return () => clearTimeout(t); }, []);
+  const closeWelcome = (goAcct) => { setWelcome(false); if (goAcct) { setTab("account"); document.querySelector(".av-screen")?.scrollTo(0, 0); } };
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("pago");
     if (!p) return;
@@ -1160,23 +1167,25 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
 
 function WelcomeModal({ store, onRegister, onClose }) {
   const benefits = [
-    [I.heart(false), "Guarda tus favoritos"],
-    [I.bag, "Recupera tu carrito"],
-    [I.user, "Mira tu historial de compras"],
+    [I.heart(false), "Guarda tus favoritos", "Marca lo que te gusta y lo encuentras al instante."],
+    [I.bag, "Recupera tu carrito", "Si cierras la tienda, tu carrito te espera."],
+    [I.user, "Historial de compras", "Revisa todos tus pedidos cuando quieras."],
   ];
   return (
     <div className="av-modal" onClick={onClose}>
       <div className="av-sheet av-welcome" onClick={(e) => e.stopPropagation()}>
+        <button className="av-welcomex" onClick={onClose} aria-label="Cerrar">✕</button>
         <div className="av-welcomehero" style={grad(store.logoA, store.logoB)}>
           <StoreLogo store={store} size={52} radius={16} fontSize={26} />
           <div className="av-welcometag">¡Bienvenid@ a {store.name}!</div>
         </div>
         <div className="av-welcomebody">
           <div className="t">Crea tu cuenta gratis</div>
-          <div className="d">Con nombre y teléfono guardas todo en este dispositivo:</div>
-          <div className="av-welcomelist">{benefits.map(([ic, t], i) => <div key={i} className="row"><span className="ic">{ic({ width: 16, height: 16 })}</span>{t}</div>)}</div>
+          <div className="d">Con tu nombre y teléfono guardas todo en este dispositivo:</div>
+          <div className="av-welcomelist">{benefits.map(([ic, t, d], i) => <div key={i} className="row"><span className="ic">{ic({ width: 16, height: 16 })}</span><div><div className="bt">{t}</div><div className="bd">{d}</div></div></div>)}</div>
           <button className="av-btn primary block" onClick={onRegister}>{I.user({ width: 17, height: 17 })} Crear mi cuenta</button>
           <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onClose}>Ahora no</button>
+          <p className="av-hint" style={{ textAlign: "center", marginTop: 10 }}>Es gratis y solo se guarda en tu teléfono.</p>
         </div>
       </div>
     </div>
@@ -1641,8 +1650,8 @@ function Seller({ store, products, orders, stockLog, onLogout, onToggle, onSetSo
       { k: "productos", l: "Productos", ic: "grid" },
       { k: "pedidos", l: "Pedidos", ic: "bag" },
       { k: "stock", l: "Stock", ic: "box" },
-      { k: "importar", l: "Importar productos", ic: "grid", subs: [{ label: "Subir hoja de cálculo", id: "subir" }, { label: "Lotes importados", id: "lotes" }] },
-      { k: "gestor", l: "Gestor de hoja de cálculo", ic: "grid" },
+      { k: "importar", l: "Importar y actualizar", ic: "grid", subs: [{ label: "Importar / actualizar hoja", id: "subir" }, { label: "Lotes importados", id: "lotes" }] },
+      { k: "gestor", l: "Ver hoja de cálculo", ic: "grid" },
       { k: "categorias", l: "Categorías del menú", ic: "tag", subs: [{ label: "Categorías", id: "cats" }, { label: "Público de cada producto", id: "publico" }] },
     ] },
     { head: "Apariencia", items: [
@@ -2722,6 +2731,8 @@ function SellerImport({ store, products, onReload, focusSub }) {
   const [summary, setSummary] = useState(null);
   const [batches, setBatches] = useState([]);
   const [busyBatch, setBusyBatch] = useState(null);
+  const [mode, setMode] = useState("nuevo");
+  const clearFile = () => { setRows([]); setErrors([]); setWarns([]); setFileName(""); setSummary(null); };
   const reloadBatches = () => listImportLogs(store.id).then(setBatches).catch(() => {});
   useEffect(() => { reloadBatches(); }, [store.id]);
   useEffect(() => { if (focusSub === "lotes") { const el = document.getElementById("sec-lotes"); if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 80); } }, [focusSub]);
@@ -2742,25 +2753,69 @@ function SellerImport({ store, products, onReload, focusSub }) {
     setFileName(f.name); setSummary(null);
     const text = await f.text();
     const grid = parseCSV(text);
-    if (!grid.length) { setErrors([{ row: 0, msg: "El archivo está vacío." }]); setRows([]); return; }
+    if (!grid.length) { setErrors([{ row: 0, msg: "El archivo está vacío." }]); setRows([]); e.target.value = ""; return; }
     const header = grid[0].map((h) => (h || "").trim());
-    if (!header.includes("Nombre") || !header.includes("Precio")) { setErrors([{ row: 1, msg: "Faltan columnas obligatorias. Usa la plantilla (debe tener al menos Nombre y Precio)." }]); setRows([]); return; }
     const objs = grid.slice(1).map((cells) => { const o = {}; header.forEach((h, i) => { o[h] = cells[i] !== undefined ? cells[i] : ""; }); return o; });
     const errs = []; const wrns = []; const seen = new Set();
-    objs.forEach((o, i) => {
-      const ln = i + 2;
-      if (!(o.Nombre || "").trim()) errs.push({ row: ln, msg: "Falta el Nombre." });
-      if (importNum(o.Precio) <= 0) errs.push({ row: ln, msg: `Precio inválido en “${(o.Nombre || "").trim() || "fila " + ln}”.` });
-      const id = (o.ID_INTERNO || "").trim();
-      if (id) { if (seen.has(id)) wrns.push({ row: ln, msg: `ID_INTERNO repetido: ${id}.` }); seen.add(id); }
-      else wrns.push({ row: ln, msg: `Sin ID_INTERNO en “${(o.Nombre || "").trim() || "fila " + ln}” (se podrá sincronizar peor luego).` });
-    });
-    if (objs.length > IMPORT_MAX) errs.push({ row: 0, msg: `Demasiadas filas (${objs.length}). El máximo por lote es ${IMPORT_MAX}.` });
+    if (mode === "sync") {
+      if (!header.includes("ID_INTERNO")) { setErrors([{ row: 1, msg: "Para actualizar, la hoja debe tener la columna ID_INTERNO (conecta cada fila con tu producto)." }]); setRows([]); e.target.value = ""; return; }
+      objs.forEach((o, i) => { if (!(o.ID_INTERNO || "").trim()) errs.push({ row: i + 2, msg: "Falta ID_INTERNO." }); });
+    } else {
+      if (!header.includes("Nombre") || !header.includes("Precio")) { setErrors([{ row: 1, msg: "Faltan columnas obligatorias (Nombre y Precio). Usa la plantilla." }]); setRows([]); e.target.value = ""; return; }
+      objs.forEach((o, i) => {
+        const ln = i + 2;
+        if (!(o.Nombre || "").trim()) errs.push({ row: ln, msg: "Falta el Nombre." });
+        if (importNum(o.Precio) <= 0) errs.push({ row: ln, msg: `Precio inválido en “${(o.Nombre || "").trim() || "fila " + ln}”.` });
+        const id = (o.ID_INTERNO || "").trim();
+        if (id) { if (seen.has(id)) wrns.push({ row: ln, msg: `ID_INTERNO repetido: ${id}.` }); seen.add(id); }
+        else wrns.push({ row: ln, msg: `Sin ID_INTERNO en “${(o.Nombre || "").trim() || "fila " + ln}” (se sincronizará peor luego).` });
+      });
+      if (objs.length > IMPORT_MAX) errs.push({ row: 0, msg: `Demasiadas filas (${objs.length}). El máximo por lote es ${IMPORT_MAX}.` });
+    }
     setRows(objs); setErrors(errs); setWarns(wrns); e.target.value = "";
   };
 
   const validRows = rows.filter((o) => (o.Nombre || "").trim() && importNum(o.Precio) > 0);
   const byCat = {}; validRows.forEach((o) => { const c = (o.Categoria || "Sin categoría").trim() || "Sin categoría"; byCat[c] = (byCat[c] || 0) + 1; });
+
+  const syncData = (() => {
+    if (mode !== "sync" || !rows.length) return { changes: [], news: [], missing: [] };
+    const byId = new Map(products.filter((p) => p.importIdInterno).map((p) => [p.importIdInterno, p]));
+    const changes = []; const news = []; const missing = [];
+    rows.forEach((o) => {
+      const id = (o.ID_INTERNO || "").trim(); if (!id) return;
+      const p = byId.get(id);
+      if (!p) { if ((o.Nombre || "").trim() && importNum(o.Precio) > 0) news.push(o); else missing.push(id); return; }
+      const fields = [];
+      const np = importNum(o.Precio);
+      if (String(o.Precio || "").trim() !== "" && np > 0 && np !== p.normalPrice) fields.push({ f: "Precio", from: CLP(p.normalPrice), to: CLP(np), apply: () => updateProduct(p.id, { normal_price: np }) });
+      if (String(o.Descripcion || "").trim() && o.Descripcion.trim() !== (p.desc || "")) fields.push({ f: "Descripción", from: "anterior", to: "actualizada", apply: () => updateProduct(p.id, { description: o.Descripcion.trim() }) });
+      const simple = p.variants.length === 1 && p.variants[0].size === "Única";
+      if (simple && String(o.Stock_simple || "").trim() !== "") { const ns = importNum(o.Stock_simple); if (ns !== p.variants[0].stock) fields.push({ f: "Stock", from: p.variants[0].stock, to: ns, apply: () => updateVariantStock(p.variants[0].id, ns) }); }
+      else if (!simple) {
+        const ss = { ...(p.sizeStock || {}) }; let changed = false;
+        for (const [col, sz] of [["Stock_S", "S"], ["Stock_M", "M"], ["Stock_L", "L"]]) { if (String(o[col] || "").trim() !== "") { const nv = importNum(o[col]); if ((ss[sz] || 0) !== nv) { ss[sz] = nv; changed = true; } } }
+        if (changed) { const newTotal = Object.values(ss).reduce((a, b) => a + (+b || 0), 0); fields.push({ f: "Stock", from: totalStock(p), to: newTotal, apply: () => updateProduct(p.id, { size_stock: ss }) }); }
+      }
+      if (fields.length) changes.push({ name: p.name, fields });
+    });
+    return { changes, news, missing };
+  })();
+
+  const doSync = async () => {
+    setImporting(true); setProgress(0);
+    try {
+      const all = syncData.changes.flatMap((c) => c.fields);
+      let done = 0;
+      for (const f of all) { await f.apply(); done++; setProgress(done); }
+      const log = await createImportLog(store.id, { fileName: fileName || "sync.csv", productCount: syncData.news.length, batchNumber: batches.length + 1, tipo: "sincronizacion" });
+      for (const o of syncData.news) { const { product, variants } = rowToProduct(o, log.id); await createProduct(store.id, product, variants); }
+      setSummary({ sync: true, changed: syncData.changes.length, news: syncData.news.length });
+      clearFile();
+      reloadBatches(); onReload && onReload();
+    } catch (err) { alert("Error al actualizar: " + err.message); }
+    finally { setImporting(false); }
+  };
 
   const doImport = async () => {
     if (!validRows.length || errors.length) return;
@@ -2790,15 +2845,19 @@ function SellerImport({ store, products, onReload, focusSub }) {
   };
 
   return (
-    <PageWrap title="Importar productos">
-      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>Sube una hoja de cálculo (CSV de Excel o Google Sheets) para crear muchos productos de una vez. Se crean en <b>borrador</b> (ocultos) para que los revises antes de publicar.</p>
+    <PageWrap title="Importar y actualizar productos">
+      <div className="av-modeseg">
+        <button className={"seg" + (mode === "nuevo" ? " on" : "")} onClick={() => { setMode("nuevo"); clearFile(); }}>Importar nuevos</button>
+        <button className={"seg" + (mode === "sync" ? " on" : "")} onClick={() => { setMode("sync"); clearFile(); }}>Actualizar stock/precios</button>
+      </div>
+      <p className="av-hint" style={{ textAlign: "left", margin: "0 0 12px" }}>{mode === "nuevo" ? <>Sube una hoja de cálculo (CSV de Excel o Google Sheets) para crear muchos productos de una vez. Se crean en <b>borrador</b> (ocultos) para que los revises antes de publicar.</> : <>Sube una hoja <b>actualizada</b> con los mismos <b>ID_INTERNO</b> para cambiar stock, precios o descripción. Te muestro los cambios antes de aplicarlos; lo nuevo se crea en borrador.</>}</p>
       <div id="sec-subir" className="av-srow2" style={{ borderTop: 0, flexWrap: "wrap", gap: 10 }}>
         <button className="av-btn dark" style={{ flex: "none", padding: "11px 16px" }} onClick={downloadTemplate}>{I.box({ width: 16, height: 16 })} Descargar plantilla CSV</button>
-        <label className="av-btn primary" style={{ flex: "none", padding: "11px 16px", cursor: "pointer" }}>{I.grid({ width: 16, height: 16 })} Subir archivo CSV<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={onFile} /></label>
+        <label className="av-btn primary" style={{ flex: "none", padding: "11px 16px", cursor: "pointer" }}>{I.grid({ width: 16, height: 16 })} {mode === "sync" ? "Subir hoja actualizada" : "Subir archivo CSV"}<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={onFile} /></label>
       </div>
-      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>En Excel: <b>Archivo → Guardar como → CSV UTF-8</b>. En Google Sheets: <b>Archivo → Descargar → CSV</b>. Columnas obligatorias: <b>Nombre</b> y <b>Precio</b>. Recomendado: <b>ID_INTERNO</b> (para sincronizar después). Método de stock: “simple” o “total por talla” (con Stock_S/M/L).</p>
+      <p className="av-hint" style={{ textAlign: "left", marginTop: 8 }}>En Excel: <b>Archivo → Guardar como → CSV UTF-8</b>. En Google Sheets: <b>Archivo → Descargar → CSV</b>. {mode === "sync" ? <>La columna <b>ID_INTERNO</b> es obligatoria (conecta cada fila con tu producto). Deja en blanco lo que no quieras cambiar.</> : <>Columnas obligatorias: <b>Nombre</b> y <b>Precio</b>. Recomendado: <b>ID_INTERNO</b> (para poder actualizar después). Método de stock: “simple” o “total por talla” (con Stock_S/M/L).</>}</p>
 
-      {fileName && (
+      {fileName && mode === "nuevo" && (
         <div style={{ marginTop: 16 }}>
           <div className="av-pagetitle2" style={{ fontSize: 15 }}>Previsualización · {fileName}</div>
           <div className="av-acctstats" style={{ marginBottom: 10 }}>
@@ -2824,7 +2883,28 @@ function SellerImport({ store, products, onReload, focusSub }) {
         </div>
       )}
 
-      {summary && <div style={{ background: "rgba(20,160,80,.1)", border: "1px solid rgba(20,160,80,.35)", borderRadius: 14, padding: 14, marginTop: 14, color: "var(--ok)", fontWeight: 600 }}>✓ Importados {summary.count} productos (Lote #{summary.batchNumber}). Revísalos en <b>Productos</b> y actívalos cuando quieras.</div>}
+      {fileName && mode === "sync" && (
+        <div style={{ marginTop: 16 }}>
+          <div className="av-pagetitle2" style={{ fontSize: 15 }}>Cambios detectados · {fileName}</div>
+          <div className="av-acctstats" style={{ marginBottom: 10 }}>
+            <div className="av-acctstat"><div className="n">{syncData.changes.length}</div><div className="l">Con cambios</div></div>
+            <div className="av-acctstat"><div className="n">{syncData.news.length}</div><div className="l">Nuevos</div></div>
+            <div className="av-acctstat"><div className="n" style={{ color: syncData.missing.length ? "#C70" : undefined }}>{syncData.missing.length}</div><div className="l">Sin coincidir</div></div>
+          </div>
+          {errors.length > 0 && <div style={{ background: "rgba(211,51,51,.08)", border: "1px solid rgba(211,51,51,.3)", borderRadius: 12, padding: 12, marginBottom: 10, fontSize: 12.5, color: "#B22", lineHeight: 1.6 }}>{errors.slice(0, 6).map((e, i) => <div key={i}>• {e.row ? "Fila " + e.row + ": " : ""}{e.msg}</div>)}</div>}
+          {syncData.changes.length === 0 && syncData.news.length === 0
+            ? <p className="av-hint" style={{ textAlign: "left" }}>No hay cambios que aplicar (todo coincide con lo que ya tienes).</p>
+            : <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, marginBottom: 12, fontSize: 13, lineHeight: 1.7 }}>
+                {syncData.changes.slice(0, 12).map((c, i) => <div key={i}>✅ <b>{c.name}</b>: {c.fields.map((f) => `${f.f} ${f.from} → ${f.to}`).join(" · ")}</div>)}
+                {syncData.changes.length > 12 && <div className="av-hint" style={{ textAlign: "left", margin: "4px 0 0" }}>…y {syncData.changes.length - 12} productos más con cambios.</div>}
+                {syncData.news.slice(0, 8).map((o, i) => <div key={"n" + i}>🆕 <b>{(o.Nombre || o.ID_INTERNO || "").trim()}</b>: se creará en borrador.</div>)}
+                {syncData.missing.length > 0 && <div style={{ color: "#A60" }}>⚠️ {syncData.missing.length} ID_INTERNO no coinciden con ningún producto (se ignoran).</div>}
+              </div>}
+          <button className="av-btn primary block" disabled={importing || (syncData.changes.length === 0 && syncData.news.length === 0)} onClick={doSync}>{importing ? `Aplicando… ${progress}` : `Aplicar cambios (${syncData.changes.length} actualizaciones${syncData.news.length ? " + " + syncData.news.length + " nuevos" : ""})`}</button>
+        </div>
+      )}
+
+      {summary && <div style={{ background: "rgba(20,160,80,.1)", border: "1px solid rgba(20,160,80,.35)", borderRadius: 14, padding: 14, marginTop: 14, color: "var(--ok)", fontWeight: 600 }}>{summary.sync ? `✓ Actualizados ${summary.changed} productos${summary.news ? " y creados " + summary.news + " nuevos (borrador)" : ""}.` : `✓ Importados ${summary.count} productos (Lote #${summary.batchNumber}).`} Revísalos en <b>Productos</b>.</div>}
 
       <div id="sec-lotes" style={{ height: 1, background: "var(--line)", margin: "22px 0 14px" }} />
       <div className="av-pagetitle2" style={{ fontSize: 15 }}>Lotes importados</div>

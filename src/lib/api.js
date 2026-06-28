@@ -117,6 +117,24 @@ export async function joinWaitlist(productId, contact) {
   if (error) throw error;
 }
 
+// Importador: registro de lotes y deshacer
+export async function createImportLog(storeId, { fileName, productCount, batchNumber, tipo }) {
+  const { data, error } = await supabase.from("imports_log").insert({ store_id: storeId, file_name: fileName, product_count: productCount, batch_number: batchNumber, tipo: tipo || "importacion_inicial" }).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function listImportLogs(storeId) {
+  const { data, error } = await supabase.from("imports_log").select("*").eq("store_id", storeId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+export async function deleteImportBatch(batchId) {
+  const { error: e1 } = await supabase.from("products").delete().eq("import_batch_id", batchId);
+  if (e1) throw e1;
+  const { error: e2 } = await supabase.from("imports_log").delete().eq("id", batchId);
+  if (e2) throw e2;
+}
+
 // Para el enlace público de comprador (sin login): una tienda por id, o la primera si no se indica id
 export async function getStorePublic(storeId, host) {
   // 1. Por id o slug explícito (?tienda=...)
@@ -207,6 +225,9 @@ export async function createProduct(storeId, product, variants) {
       is_new: true,
       sort_order: product.sort_order ?? 0,
       size_stock: product.sizeStock || {},
+      import_id_interno: product.importIdInterno || null,
+      import_batch_id: product.importBatchId || null,
+      imported_at: product.importedAt || null,
     })
     .select()
     .single();
