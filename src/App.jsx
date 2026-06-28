@@ -135,8 +135,11 @@ const CSS = `
 .av-stylecard.on{border-color:var(--accent);background:var(--accent-soft);}
 .av-stylename{font-weight:700;font-size:13px;color:var(--ink);}
 .av-styledesc{font-size:11px;color:var(--muted);}
-.av-screen{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--shop-bg, var(--surface));}
-.av-screen::-webkit-scrollbar{width:0;}
+.av-screen{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--shop-bg, var(--surface));scrollbar-width:thin;scrollbar-color:rgba(140,140,160,.55) transparent;-webkit-overflow-scrolling:touch;}
+.av-screen::-webkit-scrollbar{width:10px;}
+.av-screen::-webkit-scrollbar-track{background:transparent;}
+.av-screen::-webkit-scrollbar-thumb{background:rgba(140,140,160,.5);border-radius:8px;border:2px solid transparent;background-clip:padding-box;}
+.av-screen::-webkit-scrollbar-thumb:hover{background:rgba(120,120,140,.75);background-clip:padding-box;}
 .av-pad{padding-bottom:96px;}
 .av-top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:40px 18px 12px;display:flex;align-items:center;gap:10px;}
 .av-store{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
