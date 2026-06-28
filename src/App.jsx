@@ -23,7 +23,7 @@ const CSS = `
 .av-hint{font-size:12px;color:var(--muted);max-width:430px;text-align:center;line-height:1.55;}
 .av-phone{width:100%;max-width:418px;background:var(--shop-bg, var(--surface));border:8px solid #15151C;border-radius:42px;overflow:hidden;box-shadow:0 30px 70px -30px rgba(20,20,50,.5);display:flex;flex-direction:column;height:780px;position:relative;}
 .av-notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:118px;height:24px;background:#15151C;border-radius:0 0 16px 16px;z-index:60;}
-@media (max-width:480px){
+@media (max-width:1023px){
   .av-stage{padding:0;gap:0;}
   .av-phone{max-width:none;width:100%;height:100vh;height:100dvh;border:0;border-radius:0;box-shadow:none;}
   .av-notch{display:none;}
@@ -1279,7 +1279,7 @@ function DesktopHero({ store, onShop }) {
         {s.sub && <p className="av-dhero-sub">{s.sub}</p>}
         <div className="av-dhero-cta">
           <button className="av-btn" style={{ background: "#fff", color: "#15151B", flex: "none", padding: "14px 26px" }} onClick={onShop}>{I.bag({ width: 18, height: 18 })} Ver productos</button>
-          {wa && <a className="av-btn wa" href={wa} target="_blank" rel="noreferrer" style={{ textDecoration: "none", color: "#fff", flex: "none", padding: "14px 24px" }}>{I.wa()} Escríbenos</a>}
+          {wa && <a className="av-btn" href={wa} target="_blank" rel="noreferrer" style={{ textDecoration: "none", color: "#fff", background: "var(--wa)", flex: "none", width: "auto", padding: "14px 24px", gap: 8 }}>{I.wa({ width: 18, height: 18 })} Escríbenos</a>}
         </div>
         <div className="av-dhero-meta">{store.sii && <span>{I.shield({ width: 14, height: 14 })} Verificado en el SII</span>}<span>{I.wa({ width: 14, height: 14 })} Atención por WhatsApp</span></div>
       </div>
@@ -1604,7 +1604,7 @@ function Checkout({ store, total, onBack, onPlace, showToast, defaultBuyer }) {
       {method === "transferencia" ? (
       <div className="av-cashbox" style={{ flexDirection: "column", alignItems: "stretch", gap: 11 }}>
         <div style={{ display: "flex", gap: 10 }}><span style={{ color: "var(--wa)", flex: "none" }}>{I.wa({ width: 18, height: 18 })}</span><div>Cuando hagas la transferencia, <b>envíanos el comprobante por WhatsApp</b> para validar tu pago. {store.name} te confirmará por ahí mismo.</div></div>
-        {store.whatsapp && <a href={`https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}! Hice una compra por transferencia por ${CLP(total)}. Aquí va mi comprobante:`)}`} target="_blank" rel="noreferrer" className="av-btn wa" style={{ textDecoration: "none", justifyContent: "center", color: "#fff" }}>{I.wa()} Enviar comprobante por WhatsApp</a>}
+        {store.whatsapp && <a href={`https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}! Hice una compra por transferencia por ${CLP(total)}. Aquí va mi comprobante:`)}`} target="_blank" rel="noreferrer" className="av-btn wa block" style={{ textDecoration: "none", justifyContent: "center", color: "#fff" }}>{I.wa()} Enviar comprobante por WhatsApp</a>}
       </div>
       ) : method === "mercadopago" ? (
       <div className="av-cashbox"><span style={{ color: "var(--accent)", flex: "none" }}>{I.lock({ width: 18, height: 18 })}</span><div>Pagarás <b>{CLP(total)}</b> de forma segura en Mercado Pago (tarjeta de crédito, débito o saldo). Al confirmar, te llevamos al pago y luego vuelves a la tienda.</div></div>
