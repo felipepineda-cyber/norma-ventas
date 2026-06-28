@@ -1010,17 +1010,44 @@ function Main({ onLogout }) {
 }
 
 /* ============================ COMPRADOR ============================ */
-const WA_MSGS = [
-  { label: "Tengo una duda", text: "¡Hola {store}! Tengo una duda 🙂" },
-  { label: "Consultar stock, tallas y colores", text: "¡Hola {store}! Quiero consultar disponibilidad, tallas o colores de un producto." },
-  { label: "Estado de mi pedido / despacho", text: "¡Hola {store}! Quiero saber el estado de mi pedido o despacho." },
-  { label: "Cambios y devoluciones", text: "¡Hola {store}! Tengo una consulta sobre cambios o devoluciones." },
+function flagEmoji(iso2) { return (iso2 || "").toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0))); }
+const COUNTRY_CODES = [
+  ["Chile", "CL", "56"], ["Argentina", "AR", "54"], ["Bolivia", "BO", "591"], ["Brasil", "BR", "55"], ["Colombia", "CO", "57"],
+  ["Costa Rica", "CR", "506"], ["Cuba", "CU", "53"], ["Ecuador", "EC", "593"], ["El Salvador", "SV", "503"], ["España", "ES", "34"],
+  ["Estados Unidos", "US", "1"], ["Guatemala", "GT", "502"], ["Honduras", "HN", "504"], ["México", "MX", "52"], ["Nicaragua", "NI", "505"],
+  ["Panamá", "PA", "507"], ["Paraguay", "PY", "595"], ["Perú", "PE", "51"], ["Puerto Rico", "PR", "1"], ["Rep. Dominicana", "DO", "1"],
+  ["Uruguay", "UY", "598"], ["Venezuela", "VE", "58"],
+  ["Alemania", "DE", "49"], ["Arabia Saudita", "SA", "966"], ["Argelia", "DZ", "213"], ["Australia", "AU", "61"], ["Austria", "AT", "43"],
+  ["Bangladés", "BD", "880"], ["Bélgica", "BE", "32"], ["Bulgaria", "BG", "359"], ["Canadá", "CA", "1"], ["Catar", "QA", "974"],
+  ["China", "CN", "86"], ["Chipre", "CY", "357"], ["Corea del Sur", "KR", "82"], ["Croacia", "HR", "385"], ["Dinamarca", "DK", "45"],
+  ["Egipto", "EG", "20"], ["Emiratos Árabes", "AE", "971"], ["Eslovaquia", "SK", "421"], ["Eslovenia", "SI", "386"], ["Estonia", "EE", "372"],
+  ["Filipinas", "PH", "63"], ["Finlandia", "FI", "358"], ["Francia", "FR", "33"], ["Grecia", "GR", "30"], ["Hong Kong", "HK", "852"],
+  ["Hungría", "HU", "36"], ["India", "IN", "91"], ["Indonesia", "ID", "62"], ["Irlanda", "IE", "353"], ["Islandia", "IS", "354"],
+  ["Israel", "IL", "972"], ["Italia", "IT", "39"], ["Japón", "JP", "81"], ["Kenia", "KE", "254"], ["Kuwait", "KW", "965"],
+  ["Letonia", "LV", "371"], ["Líbano", "LB", "961"], ["Lituania", "LT", "370"], ["Luxemburgo", "LU", "352"], ["Malasia", "MY", "60"],
+  ["Malta", "MT", "356"], ["Marruecos", "MA", "212"], ["Nigeria", "NG", "234"], ["Noruega", "NO", "47"], ["Nueva Zelanda", "NZ", "64"],
+  ["Países Bajos", "NL", "31"], ["Pakistán", "PK", "92"], ["Polonia", "PL", "48"], ["Portugal", "PT", "351"], ["Reino Unido", "GB", "44"],
+  ["Rep. Checa", "CZ", "420"], ["Rumania", "RO", "40"], ["Rusia", "RU", "7"], ["Serbia", "RS", "381"], ["Singapur", "SG", "65"],
+  ["Sudáfrica", "ZA", "27"], ["Suecia", "SE", "46"], ["Suiza", "CH", "41"], ["Tailandia", "TH", "66"], ["Taiwán", "TW", "886"],
+  ["Turquía", "TR", "90"], ["Ucrania", "UA", "380"], ["Vietnam", "VN", "84"],
 ];
 
-function WaFab({ store }) {
+function waUrl(store, acct, asunto) {
+  if (!store.whatsapp) return null;
+  const nombre = acct && acct.name ? `Soy ${acct.name}. ` : "";
+  return `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}! ${nombre}${asunto || "Tengo una consulta."}`)}`;
+}
+
+const WA_MSGS = [
+  { label: "Tengo una duda", asunto: "Tengo una duda 🙂" },
+  { label: "Consultar stock, tallas y colores", asunto: "Quiero consultar disponibilidad, tallas o colores de un producto." },
+  { label: "Estado de mi pedido / despacho", asunto: "Quiero saber el estado de mi pedido o despacho." },
+  { label: "Cambios y devoluciones", asunto: "Tengo una consulta sobre cambios o devoluciones." },
+];
+
+function WaFab({ store, acct }) {
   const [open, setOpen] = useState(false);
   if (!store.whatsapp) return null;
-  const link = (text) => `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(text.replace("{store}", store.name))}`;
   return (
     <>
       {open && <div className="av-wafab-ov" onClick={() => setOpen(false)} />}
@@ -1029,7 +1056,7 @@ function WaFab({ store }) {
           <div className="av-wamenu">
             <div className="av-wamenuhead">¿En qué te ayudamos?</div>
             {WA_MSGS.map((m, i) => (
-              <a key={i} href={link(m.text)} target="_blank" rel="noreferrer" className="av-waopt" onClick={() => setOpen(false)}>{I.wa({ width: 15, height: 15 })}<span>{m.label}</span></a>
+              <a key={i} href={waUrl(store, acct, m.asunto)} target="_blank" rel="noreferrer" className="av-waopt" onClick={() => setOpen(false)}>{I.wa({ width: 15, height: 15 })}<span>{m.label}</span></a>
             ))}
           </div>
         )}
@@ -1164,7 +1191,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
         <div className="av-pad av-buyerpad">
           {tab === "home" && (catFilter
             ? <CatView store={store} products={visible} filter={catFilter} favs={favs} toggleFav={toggleFav} open={open} onClear={() => setCatFilter(null)} />
-            : <Home store={store} products={visible} favs={favs} toggleFav={toggleFav} open={open} goSearch={() => setTab("search")} />)}
+            : <Home store={store} products={visible} favs={favs} toggleFav={toggleFav} open={open} goSearch={() => setTab("search")} acct={acct} />)}
           {tab === "search" && <Search products={visible} filters={filters} setFilters={setFilters} favs={favs} toggleFav={toggleFav} open={open} />}
           {tab === "favs" && <Favs products={visible.filter((p) => favs.includes(p.id))} favs={favs} toggleFav={toggleFav} open={open} goHome={() => setTab("home")} />}
           {tab === "cart" && <Cart cart={cart} setCart={setCart} total={cartTotal} onShop={() => setTab("home")} onCheckout={() => setFlow("checkout")} />}
@@ -1179,7 +1206,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
           <button key={k} className={"av-navb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{ic({ width: 22, height: 22 })}{k === "cart" && cartCount > 0 && <span className="ndot">{cartCount}</span>}{k === "favs" && favs.length > 0 && <span className="ndot">{favs.length}</span>}<span>{l}</span></button>
         ))}
       </div>
-      {tab !== "cart" && <WaFab store={store} />}
+      {tab !== "cart" && <WaFab store={store} acct={acct} />}
       {welcome && <WelcomeModal store={store} onRegister={() => closeWelcome(true, "register")} onLogin={() => closeWelcome(true, "login")} onClose={() => closeWelcome(false)} />}
     </>
   );
@@ -1285,13 +1312,13 @@ function useIsDesktop() {
   return d;
 }
 
-function DesktopHero({ store, onShop }) {
+function DesktopHero({ store, onShop, acct }) {
   const s = (store.slides && store.slides[0]) || { eyebrow: store.promo.eyebrow, title: store.promo.title, sub: store.promo.sub };
   const a = s.a || store.logoA, b = s.b || store.logoB;
   const heroBg = s.img
     ? { backgroundImage: `linear-gradient(115deg, ${hexA(a, 0.78)} 0%, ${hexA(b, 0.42)} 55%, rgba(0,0,0,.15) 100%), url(${s.img})`, backgroundSize: "cover", backgroundPosition: "center" }
     : grad(a, b);
-  const wa = store.whatsapp ? `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}! Tengo una consulta.`)}` : null;
+  const wa = waUrl(store, acct, "Quiero hacer una consulta.");
   return (
     <section className="av-dhero" style={heroBg}>
       <div className="av-dhero-in">
@@ -1322,8 +1349,8 @@ function DesktopValueProps({ store }) {
   );
 }
 
-function DesktopCTA({ store }) {
-  const wa = store.whatsapp ? `https://wa.me/${store.whatsapp}?text=${encodeURIComponent(`¡Hola ${store.name}!`)}` : null;
+function DesktopCTA({ store, acct }) {
+  const wa = waUrl(store, acct, "Quiero coordinar un pedido.");
   return (
     <section className="av-dcta" style={grad(store.logoA, store.logoB)}>
       <div><div className="t">¿List@ para comprar?</div><div className="d">Escríbenos y coordinamos tu pedido por WhatsApp en minutos.</div></div>
@@ -1351,13 +1378,13 @@ function DesktopFooter({ store }) {
   );
 }
 
-function Home({ store, products, favs, toggleFav, open, goSearch }) {
+function Home({ store, products, favs, toggleFav, open, goSearch, acct }) {
   const featured = products.filter((p) => p.featured);
   const isDesktop = useIsDesktop();
   const scrollToGrid = () => { const el = document.getElementById("av-allprods"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
   return (
     <div className="av-anim">
-      {isDesktop ? <DesktopHero store={store} onShop={scrollToGrid} /> : <PromoBanner store={store} />}
+      {isDesktop ? <DesktopHero store={store} onShop={scrollToGrid} acct={acct} /> : <PromoBanner store={store} />}
       {isDesktop && <DesktopValueProps store={store} />}
       {featured.length > 0 && (<>
         <div className="av-shead"><h3>Destacados</h3><button className="all" onClick={goSearch}>Ver todo {I.chev()}</button></div>
@@ -1368,7 +1395,7 @@ function Home({ store, products, favs, toggleFav, open, goSearch }) {
       <div className="av-shead" id="av-allprods"><h3>Todos los productos</h3></div>
       {products.length === 0 ? <div className="av-empty">{I.bag({ width: 32, height: 32 })}<div>Aún no hay productos publicados.</div></div>
         : <div className="av-grid">{products.map((p) => <Card key={p.id} p={p} fav={favs.includes(p.id)} onFav={() => toggleFav(p.id)} onClick={() => open(p.id)} />)}</div>}
-      {isDesktop && <DesktopCTA store={store} />}
+      {isDesktop && <DesktopCTA store={store} acct={acct} />}
     </div>
   );
 }
@@ -1552,21 +1579,23 @@ function Account({ store, acct, onAuth, onLogout, history, favCount, goFavs, goH
   const [mode, setMode] = useState(initialMode === "login" ? "login" : "register");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("56");
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const statusLabel = (s) => s === "efectivo" ? "Efectivo" : s === "pendiente" ? "Pago en proceso" : s === "mercadopago" ? "Mercado Pago" : "Transferencia";
   const okName = name.trim().split(" ").filter(Boolean).length >= 2;
-  const okPhone = phone.replace(/\D/g, "").length >= 8;
+  const okPhone = phone.replace(/\D/g, "").length >= 6;
   const okPass = pass.length >= 4;
   const valid = mode === "login" ? (okPhone && okPass) : (okName && okPhone && okPass);
   const submit = async () => {
     if (!valid || busy) return;
     setBusy(true); setErr("");
+    const fullPhone = code + phone.replace(/\D/g, "");
     try {
-      if (mode === "login") await onAuth("login", { phone: phone.replace(/\D/g, ""), password: pass });
-      else await onAuth("register", { name: name.trim(), phone: phone.replace(/\D/g, ""), password: pass });
+      if (mode === "login") await onAuth("login", { phone: fullPhone, password: pass });
+      else await onAuth("register", { name: name.trim(), phone: fullPhone, password: pass });
       setPass("");
     } catch (e) { setErr(e.message || "No se pudo completar. Intenta de nuevo."); }
     finally { setBusy(false); }
@@ -1577,7 +1606,15 @@ function Account({ store, acct, onAuth, onLogout, history, favCount, goFavs, goH
       <div className="av-acctcard">
         <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">{mode === "login" ? "Iniciar sesión" : "Crear mi cuenta"}</div><div className="d">{mode === "login" ? "Entra con tu teléfono y clave para recuperar tus favoritos, carrito e historial." : "Con tu nombre, teléfono y una clave guardas todo y entras desde cualquier dispositivo."}</div></div></div>
         {mode === "register" && <div className="av-field"><label>Nombre y apellido</label><input className="av-input" value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} placeholder="Ej: María Pérez" /></div>}
-        <div className="av-field"><label>Teléfono (WhatsApp)</label><input className="av-input" inputMode="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setErr(""); }} placeholder="56912345678" /></div>
+        <div className="av-field"><label>Teléfono (WhatsApp)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select className="av-input" style={{ flex: "none", width: 124 }} value={code} onChange={(e) => { setCode(e.target.value); setErr(""); }}>
+              {COUNTRY_CODES.map(([n, iso, d]) => <option key={iso} value={d}>{flagEmoji(iso)} +{d} {n}</option>)}
+            </select>
+            <input className="av-input" inputMode="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setErr(""); }} placeholder="9 1234 5678" />
+          </div>
+          <p className="av-hint" style={{ textAlign: "left", marginTop: 6 }}>Elige tu país y escribe el número sin el prefijo.</p>
+        </div>
         <div className="av-field"><label>Clave (mínimo 4)</label>
           <div style={{ display: "flex", gap: 8 }}>
             <input className="av-input" type={showPass ? "text" : "password"} value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} placeholder="••••" />
@@ -1595,7 +1632,7 @@ function Account({ store, acct, onAuth, onLogout, history, favCount, goFavs, goH
   return (
     <div className="av-anim av-acctwrap">
       <div className="av-acctcard">
-        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">Hola, {acct.name.split(" ")[0]} 👋</div><div className="d">{I.wa({ width: 12, height: 12 })} {acct.phone}</div></div></div>
+        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">Hola, {acct.name.split(" ")[0]} 👋</div><div className="d">{I.wa({ width: 12, height: 12 })} +{acct.phone}</div></div></div>
       </div>
       <div className="av-acctstats">
         <button className="av-acctstat" onClick={goFavs}><div className="n">{favCount}</div><div className="l">{I.heart(false)({ width: 13, height: 13 })} Favoritos</div></button>
