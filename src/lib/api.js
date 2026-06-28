@@ -135,6 +135,26 @@ export async function deleteImportBatch(batchId) {
   if (e2) throw e2;
 }
 
+// Cuentas de comprador (clave encriptada en el servidor)
+export async function buyerRegister(storeId, { phone, name, password }) {
+  const { data, error } = await supabase.rpc("buyer_register", { p_store: storeId, p_phone: phone, p_name: name, p_password: password });
+  if (error) throw error;
+  if (data && data.error === "exists") throw new Error("Ya existe una cuenta con ese teléfono. Inicia sesión.");
+  if (data && data.error === "weak") throw new Error("La clave debe tener al menos 4 caracteres.");
+  return data;
+}
+export async function buyerLogin(storeId, { phone, password }) {
+  const { data, error } = await supabase.rpc("buyer_login", { p_store: storeId, p_phone: phone, p_password: password });
+  if (error) throw error;
+  if (data && data.error === "invalid") throw new Error("Teléfono o clave incorrectos.");
+  return data;
+}
+export async function buyerSave(id, token, dataObj) {
+  const { data, error } = await supabase.rpc("buyer_save", { p_id: id, p_token: token, p_data: dataObj });
+  if (error) throw error;
+  return data;
+}
+
 // Para el enlace público de comprador (sin login): una tienda por id, o la primera si no se indica id
 export async function getStorePublic(storeId, host) {
   // 1. Por id o slug explícito (?tienda=...)

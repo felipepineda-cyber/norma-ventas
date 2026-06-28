@@ -7,6 +7,7 @@ import {
   signIn, signUp, createMyStore, signOut, getSession, onAuthChange,
   getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, getStoreMP, saveStoreMP, verifyPassword, joinWaitlist, listProducts, createProduct, updateProduct, deleteProduct, addVariants, setOffer,
   createImportLog, listImportLogs, deleteImportBatch,
+  buyerRegister, buyerLogin, buyerSave,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, crearPagoMP, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -1066,9 +1067,26 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
   useEffect(() => { try { localStorage.setItem(`av_hist_${store.id}`, JSON.stringify(history)); } catch { /* noop */ } }, [history, store.id]);
   const saveAcct = (a) => { setAcct(a); try { localStorage.setItem(`av_acct_${store.id}`, JSON.stringify(a)); } catch { /* noop */ } };
   const logoutAcct = () => { setAcct(null); try { localStorage.removeItem(`av_acct_${store.id}`); } catch { /* noop */ } };
+  const [acctMode, setAcctMode] = useState("register");
+  const doAuth = async (kind, payload) => {
+    const res = kind === "register" ? await buyerRegister(store.id, payload) : await buyerLogin(store.id, payload);
+    saveAcct({ id: res.id, name: res.name, phone: res.phone, token: res.token });
+    const d = res.data || {};
+    if (kind === "login") {
+      if (Array.isArray(d.favs)) setFavs(d.favs);
+      if (Array.isArray(d.cart)) setCart(d.cart);
+      if (Array.isArray(d.history)) setHistory(d.history);
+    }
+    return res;
+  };
+  useEffect(() => {
+    if (!acct || !acct.token) return;
+    const t = setTimeout(() => { buyerSave(acct.id, acct.token, { favs, cart, history }).catch(() => {}); }, 900);
+    return () => clearTimeout(t);
+  }, [favs, cart, history, acct]);
   const [welcome, setWelcome] = useState(false);
   useEffect(() => { if (acct) return; const t = setTimeout(() => setWelcome(true), 700); return () => clearTimeout(t); }, []);
-  const closeWelcome = (goAcct) => { setWelcome(false); if (goAcct) { setTab("account"); document.querySelector(".av-screen")?.scrollTo(0, 0); } };
+  const closeWelcome = (goAcct, mode) => { setWelcome(false); if (goAcct) { setAcctMode(mode || "register"); setTab("account"); document.querySelector(".av-screen")?.scrollTo(0, 0); } };
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("pago");
     if (!p) return;
@@ -1089,7 +1107,6 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
     const order = await onCreateOrder({ buyer, cart, total: cartTotal, comprobanteFile: comp?.file, paymentMethod });
     const histEntry = { code: order.code, total: cartTotal, items: cart.map((i) => ({ name: i.name, qty: i.qty, price: i.price, color: i.color, size: i.size })), method: paymentMethod, date: Date.now(), status: paymentMethod === "mercadopago" ? "pendiente" : paymentMethod };
     setHistory((h) => [histEntry, ...h].slice(0, 50));
-    if (!acct && buyer && buyer.name && buyer.phone) saveAcct({ name: buyer.name, phone: buyer.phone });
     if (paymentMethod === "mercadopago") {
       const items = cart.map((i) => ({ title: i.name + (i.size && i.size !== "Única" ? " " + i.size : "") + " (" + i.color + ")", quantity: i.qty, unit_price: i.price }));
       const pago = await crearPagoMP({ items, orderId: order.id, orderCode: order.code, payerName: buyer.name });
@@ -1148,7 +1165,7 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
           {tab === "search" && <Search products={visible} filters={filters} setFilters={setFilters} favs={favs} toggleFav={toggleFav} open={open} />}
           {tab === "favs" && <Favs products={visible.filter((p) => favs.includes(p.id))} favs={favs} toggleFav={toggleFav} open={open} goHome={() => setTab("home")} />}
           {tab === "cart" && <Cart cart={cart} setCart={setCart} total={cartTotal} onShop={() => setTab("home")} onCheckout={() => setFlow("checkout")} />}
-          {tab === "account" && <Account store={store} acct={acct} onSave={saveAcct} onLogout={logoutAcct} history={history} favCount={favs.length} goFavs={() => setTab("favs")} goHome={() => setTab("home")} />}
+          {tab === "account" && <Account store={store} acct={acct} onAuth={doAuth} onLogout={logoutAcct} history={history} favCount={favs.length} goFavs={() => setTab("favs")} goHome={() => setTab("home")} initialMode={acctMode} />}
         </div>
         <DesktopFooter store={store} />
         {toast && <div className="av-toast">{toast}</div>}
@@ -1160,12 +1177,12 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
         ))}
       </div>
       {tab !== "cart" && <WaFab store={store} />}
-      {welcome && <WelcomeModal store={store} onRegister={() => closeWelcome(true)} onClose={() => closeWelcome(false)} />}
+      {welcome && <WelcomeModal store={store} onRegister={() => closeWelcome(true, "register")} onLogin={() => closeWelcome(true, "login")} onClose={() => closeWelcome(false)} />}
     </>
   );
 }
 
-function WelcomeModal({ store, onRegister, onClose }) {
+function WelcomeModal({ store, onRegister, onLogin, onClose }) {
   const benefits = [
     [I.heart(false), "Guarda tus favoritos", "Marca lo que te gusta y lo encuentras al instante."],
     [I.bag, "Recupera tu carrito", "Si cierras la tienda, tu carrito te espera."],
@@ -1184,8 +1201,9 @@ function WelcomeModal({ store, onRegister, onClose }) {
           <div className="d">Con tu nombre y teléfono guardas todo en este dispositivo:</div>
           <div className="av-welcomelist">{benefits.map(([ic, t, d], i) => <div key={i} className="row"><span className="ic">{ic({ width: 16, height: 16 })}</span><div><div className="bt">{t}</div><div className="bd">{d}</div></div></div>)}</div>
           <button className="av-btn primary block" onClick={onRegister}>{I.user({ width: 17, height: 17 })} Crear mi cuenta</button>
+          <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onLogin}>Ya tengo cuenta · Iniciar sesión</button>
           <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onClose}>Ahora no</button>
-          <p className="av-hint" style={{ textAlign: "center", marginTop: 10 }}>Es gratis y solo se guarda en tu teléfono.</p>
+          <p className="av-hint" style={{ textAlign: "center", marginTop: 10 }}>Es gratis y se guarda con tu clave para que entres desde cualquier dispositivo.</p>
         </div>
       </div>
     </div>
@@ -1527,23 +1545,46 @@ function Cart({ cart, setCart, total, onShop, onCheckout }) {
     </div>
   );
 }
-function Account({ store, acct, onSave, onLogout, history, favCount, goFavs, goHome }) {
-  const [name, setName] = useState(acct?.name || "");
-  const [phone, setPhone] = useState(acct?.phone || "");
-  const [edit, setEdit] = useState(!acct);
-  const valid = name.trim().split(" ").filter(Boolean).length >= 2 && phone.replace(/\D/g, "").length >= 8;
-  const submit = () => { if (!valid) return; onSave({ name: name.trim(), phone: phone.replace(/\D/g, "") }); setEdit(false); };
+function Account({ store, acct, onAuth, onLogout, history, favCount, goFavs, goHome, initialMode }) {
+  const [mode, setMode] = useState(initialMode === "login" ? "login" : "register");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const statusLabel = (s) => s === "efectivo" ? "Efectivo" : s === "pendiente" ? "Pago en proceso" : s === "mercadopago" ? "Mercado Pago" : "Transferencia";
+  const okName = name.trim().split(" ").filter(Boolean).length >= 2;
+  const okPhone = phone.replace(/\D/g, "").length >= 8;
+  const okPass = pass.length >= 4;
+  const valid = mode === "login" ? (okPhone && okPass) : (okName && okPhone && okPass);
+  const submit = async () => {
+    if (!valid || busy) return;
+    setBusy(true); setErr("");
+    try {
+      if (mode === "login") await onAuth("login", { phone: phone.replace(/\D/g, ""), password: pass });
+      else await onAuth("register", { name: name.trim(), phone: phone.replace(/\D/g, ""), password: pass });
+      setPass("");
+    } catch (e) { setErr(e.message || "No se pudo completar. Intenta de nuevo."); }
+    finally { setBusy(false); }
+  };
 
-  if (edit) return (
+  if (!acct) return (
     <div className="av-anim av-acctwrap">
       <div className="av-acctcard">
-        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">{acct ? "Editar mi cuenta" : "Crear mi cuenta"}</div><div className="d">Guarda tus favoritos, tu carrito y tu historial de compras en este dispositivo.</div></div></div>
-        <div className="av-field"><label>Nombre y apellido</label><input className="av-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: María Pérez" /></div>
-        <div className="av-field"><label>Teléfono (WhatsApp)</label><input className="av-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="56912345678" /></div>
-        <button className="av-btn primary block" disabled={!valid} onClick={submit}>{acct ? "Guardar cambios" : "Crear mi cuenta"}</button>
-        {acct && <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={() => setEdit(false)}>Cancelar</button>}
-        <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Tus datos se guardan solo en este dispositivo y sirven para agilizar tu compra. No se publican.</p>
+        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">{mode === "login" ? "Iniciar sesión" : "Crear mi cuenta"}</div><div className="d">{mode === "login" ? "Entra con tu teléfono y clave para recuperar tus favoritos, carrito e historial." : "Con tu nombre, teléfono y una clave guardas todo y entras desde cualquier dispositivo."}</div></div></div>
+        {mode === "register" && <div className="av-field"><label>Nombre y apellido</label><input className="av-input" value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} placeholder="Ej: María Pérez" /></div>}
+        <div className="av-field"><label>Teléfono (WhatsApp)</label><input className="av-input" inputMode="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setErr(""); }} placeholder="56912345678" /></div>
+        <div className="av-field"><label>Clave (mínimo 4)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input className="av-input" type={showPass ? "text" : "password"} value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} placeholder="••••" />
+            <button className="av-btn ghost" style={{ flex: "none", padding: "0 14px" }} onClick={() => setShowPass(!showPass)}>{showPass ? "Ocultar" : "Ver"}</button>
+          </div>
+        </div>
+        {err && <div style={{ background: "rgba(211,51,51,.08)", border: "1px solid rgba(211,51,51,.3)", borderRadius: 10, padding: "9px 12px", fontSize: 12.5, color: "#B22", marginBottom: 10 }}>{err}</div>}
+        <button className="av-btn primary block" disabled={!valid || busy} onClick={submit}>{busy ? "Un momento…" : mode === "login" ? "Iniciar sesión" : "Crear mi cuenta"}</button>
+        <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={() => { setMode(mode === "login" ? "register" : "login"); setErr(""); }}>{mode === "login" ? "No tengo cuenta · Crear una" : "Ya tengo cuenta · Iniciar sesión"}</button>
+        <p className="av-hint" style={{ textAlign: "left", marginTop: 10 }}>Tu clave se guarda <b>encriptada</b> en el servidor. No la compartas. {mode === "register" ? "Tus datos no se publican." : ""}</p>
       </div>
     </div>
   );
@@ -1551,7 +1592,7 @@ function Account({ store, acct, onSave, onLogout, history, favCount, goFavs, goH
   return (
     <div className="av-anim av-acctwrap">
       <div className="av-acctcard">
-        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">Hola, {acct.name.split(" ")[0]} 👋</div><div className="d">{I.wa({ width: 12, height: 12 })} {acct.phone}</div></div><button className="av-minitag" onClick={() => setEdit(true)}>Editar</button></div>
+        <div className="av-accthead"><span className="ic">{I.user({ width: 26, height: 26 })}</span><div><div className="t">Hola, {acct.name.split(" ")[0]} 👋</div><div className="d">{I.wa({ width: 12, height: 12 })} {acct.phone}</div></div></div>
       </div>
       <div className="av-acctstats">
         <button className="av-acctstat" onClick={goFavs}><div className="n">{favCount}</div><div className="l">{I.heart(false)({ width: 13, height: 13 })} Favoritos</div></button>
