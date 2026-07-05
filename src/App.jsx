@@ -875,6 +875,10 @@ function SellerApp({ onExit }) {
 /* ---- Licencias: canje de código para vendedores nuevos ---- */
 function AccessCodeGate({ onReady, onLogout }) {
   const [code, setCode] = useState("");
+  useEffect(() => {
+    let pend; try { pend = localStorage.getItem("nv_pending_code"); } catch { pend = null; }
+    if (pend) { setCode(pend); try { localStorage.removeItem("nv_pending_code"); } catch { /* noop */ } }
+  }, []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const submit = async () => {
@@ -889,8 +893,12 @@ function AccessCodeGate({ onReady, onLogout }) {
         <div className="av-loginlogo" style={grad("#3B2BFF", "#7A4DFF")}>🔑</div>
         <div style={{ textAlign: "center" }}>
           <div className="av-h1">Ingresa tu código de acceso</div>
-          <p className="av-desc" style={{ marginTop: 4 }}>Para crear tu tienda necesitas un código de un solo uso. Si aún no lo tienes, contáctanos para obtenerlo.</p>
+          <p className="av-desc" style={{ marginTop: 4 }}>Para crear tu tienda necesitas un código de un solo uso.</p>
         </div>
+        <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: "13px 15px", fontSize: 13, color: "var(--ink2)", lineHeight: 1.5 }}>
+          <b>¿Aún no tienes tu código?</b> La creación de tiendas nuevas requiere un pago previo. Escríbenos por WhatsApp, realiza el pago y te enviamos tu código al instante.
+        </div>
+        <a className="av-btn block" href={"https://wa.me/56999656624?text=" + encodeURIComponent("Hola, quiero crear mi tienda en norma-ventas. \u00bfC\u00f3mo pago para obtener mi c\u00f3digo de acceso?")} target="_blank" rel="noreferrer" style={{ background: "var(--wa)", color: "#fff", textDecoration: "none" }}>{I.wa({ width: 18, height: 18 })} Pagar y pedir mi código por WhatsApp</a>
         <div><label className="av-cat">Código</label><input className="av-input" style={{ marginTop: 6, fontFamily: "'Space Grotesk',monospace", letterSpacing: "0.05em" }} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="NV-XXXXXXXXXXXXXXXXXXXXXXXX" autoFocus /></div>
         {err && <div style={{ background: "var(--hot-soft)", color: "#C0291C", padding: "10px 12px", borderRadius: 10, fontSize: 13 }}>{err}</div>}
         <button className="av-btn primary block" disabled={busy || !code.trim()} onClick={submit}>{busy ? "Validando…" : "Canjear código y crear mi tienda"}</button>
@@ -1023,6 +1031,7 @@ function LoginScreen({ onDone, onBack }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [shop, setShop] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1030,6 +1039,7 @@ function LoginScreen({ onDone, onBack }) {
     setError(""); setMsg(""); setLoading(true);
     try {
       if (signup) {
+        if (accessCode.trim()) { try { localStorage.setItem("nv_pending_code", accessCode.trim()); } catch { /* noop */ } }
         const data = await signUp(email, pass);
         if (!data.session) {
           setMsg("Tu cuenta se creó. Revisa tu correo para confirmarla y luego inicia sesión.");
@@ -1053,6 +1063,13 @@ function LoginScreen({ onDone, onBack }) {
         <div className="av-loginlogo" style={grad("#3B2BFF", "#7A4DFF")}>🛍️</div>
         <div style={{ textAlign: "center" }}><div className="av-h1">{signup ? "Crear tu tienda" : "Panel del vendedor"}</div><p className="av-desc" style={{ marginTop: 4 }}>{signup ? "Regístrate y tendrás tu propia tienda, lista para cargar productos." : "Ingresa con tu correo y contraseña."}</p></div>
         {signup && <div><label className="av-cat">Nombre de tu tienda</label><input className="av-input" style={{ marginTop: 6 }} value={shop} onChange={(e) => setShop(e.target.value)} placeholder="Ej: Mi Tienda" /></div>}
+        {signup && <>
+          <div style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: "13px 15px", fontSize: 13, color: "var(--ink2)", lineHeight: 1.5 }}>
+            <b>Importante:</b> crear una tienda nueva requiere un pago previo. Si aún no has pagado, escríbenos por WhatsApp y te enviaremos tu <b>código de acceso</b> (alfanumérico, de un solo uso).
+          </div>
+          <a className="av-btn block" href={"https://wa.me/56999656624?text=" + encodeURIComponent("Hola, quiero crear mi tienda en norma-ventas. \u00bfC\u00f3mo pago para obtener mi c\u00f3digo de acceso?")} target="_blank" rel="noreferrer" style={{ background: "var(--wa)", color: "#fff", textDecoration: "none" }}>{I.wa({ width: 18, height: 18 })} Pagar y pedir código por WhatsApp</a>
+          <div><label className="av-cat">Código de acceso (si ya lo tienes)</label><input className="av-input" style={{ marginTop: 6, fontFamily: "'Space Grotesk',monospace", letterSpacing: "0.05em" }} value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="NV-XXXXXXXX…" /></div>
+        </>}
         <div><label className="av-cat">Correo</label><input className="av-input" style={{ marginTop: 6 }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.cl" /></div>
         <div><label className="av-cat">Contraseña</label><input className="av-input" style={{ marginTop: 6 }} type="password" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={signup ? "Mínimo 6 caracteres" : ""} /></div>
         {error && <div style={{ background: "var(--hot-soft)", color: "#C0291C", padding: "10px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
@@ -1101,6 +1118,11 @@ function Main({ onLogout }) {
       try {
         let s = await getMyStore();
         if (!s) {
+          // Si dejó un código escrito al registrarse, se canjea automáticamente aquí.
+          let pendCode; try { pendCode = localStorage.getItem("nv_pending_code"); } catch { pendCode = null; }
+          if (pendCode) {
+            try { await redeemAccessCode(pendCode); try { localStorage.removeItem("nv_pending_code"); } catch { /* noop */ } } catch { /* inválido: la pantalla de canje lo pedirá de nuevo */ }
+          }
           // Usuario logueado sin tienda: primero verificamos su licencia (código de acceso).
           let habilitado = false;
           try { habilitado = await canCreateStore(); } catch { habilitado = false; }
