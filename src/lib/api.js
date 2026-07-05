@@ -447,3 +447,54 @@ export async function getComprobanteUrl(path, seconds = 3600) {
   if (error) throw error;
   return data.signedUrl;
 }
+
+/* ================== LICENCIAS / CÓDIGOS DE ACCESO ==================== */
+// Control de acceso de vendedores: solo el dueño de la plataforma genera
+// códigos; un vendedor nuevo debe canjear uno para poder crear su tienda.
+
+// ¿El usuario actual puede crear una tienda? (dueño, tienda existente o código canjeado)
+export async function canCreateStore() {
+  const { data, error } = await supabase.rpc("can_create_store");
+  if (error) throw error;
+  return !!data;
+}
+
+// Canjea un código de acceso (un solo uso). Errores genéricos a propósito.
+export async function redeemAccessCode(code) {
+  const { data, error } = await supabase.rpc("redeem_code", { p_code: code });
+  if (error) throw error;
+  if (data?.error === "auth") throw new Error("Debes iniciar sesión para canjear un código.");
+  if (data?.error === "rate") throw new Error("Demasiados intentos. Espera 15 minutos y vuelve a intentarlo.");
+  if (data?.error === "invalid") throw new Error("Código inválido o ya utilizado. Revísalo e intenta de nuevo.");
+  return data; // { ok: true } o { ok: true, already: true }
+}
+
+// ¿El usuario actual es el dueño de la plataforma? (verificado en el servidor)
+export async function isAppOwner() {
+  const { data, error } = await supabase.rpc("is_app_owner");
+  if (error) return false;
+  return !!data;
+}
+
+// — Solo dueño — genera N códigos (con nota y vencimiento opcional en días)
+export async function adminGenerateCodes(count, note, daysValid) {
+  const { data, error } = await supabase.rpc("admin_generate_codes", {
+    p_count: count, p_note: note ?? null, p_days_valid: daysValid ?? null,
+  });
+  if (error) throw error;
+  return data || [];
+}
+
+// — Solo dueño — lista todos los códigos con su estado
+export async function adminListCodes() {
+  const { data, error } = await supabase.rpc("admin_list_codes");
+  if (error) throw error;
+  return data || [];
+}
+
+// — Solo dueño — revoca un código sin usar
+export async function adminRevokeCode(id) {
+  const { data, error } = await supabase.rpc("admin_revoke_code", { p_id: id });
+  if (error) throw error;
+  return data;
+}

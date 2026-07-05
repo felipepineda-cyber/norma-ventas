@@ -8,6 +8,7 @@ import {
   getMyStore, getStorePublic, getStoreNotify, saveStoreNotify, getStoreMP, saveStoreMP, verifyPassword, joinWaitlist, listProducts, createProduct, updateProduct, deleteProduct, addVariants, setOffer,
   createImportLog, listImportLogs, deleteImportBatch,
   buyerRegister, buyerLogin, buyerSave,
+  canCreateStore, redeemAccessCode, isAppOwner, adminGenerateCodes, adminListCodes, adminRevokeCode,
   saveOrder, updateVariantStock, logStockChange, listStockLog, uploadProductImages,
   createOrder, listOrders, updateOrderStatus, updateOrder, deleteOrder, crearPagoMP, getComprobanteUrl, upsertStore, uploadStoreLogo,
 } from "./lib/api";
@@ -82,7 +83,7 @@ const CSS = `
   .av-dfooter .col a:hover{color:var(--accent);}
   .av-dfooter-bottom{border-top:1px solid var(--line);max-width:1320px;margin:0 auto;padding:16px 32px;font-size:12px;color:var(--muted);}
   /* Grilla y tarjetas más premium */
-  .av-buyerpad .av-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;padding-bottom:48px;}
+  .av-buyerpad .av-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;padding-bottom:48px;}
   .av-card{transition:transform .16s ease, box-shadow .16s ease;}
   .av-card:hover{transform:translateY(-4px);box-shadow:0 22px 44px -22px rgba(20,20,50,.4);}
   .av-topnavb{font-size:14px;}
@@ -145,7 +146,7 @@ const CSS = `
 .av-store{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
 .av-logo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:19px;flex:none;box-shadow:0 4px 12px -4px rgba(59,43,255,.5);}
 .av-storetext{min-width:0;}
-.av-storename{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.av-storename{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;letter-spacing:-.01em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .av-sii{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ok);margin-top:2px;}
 .av-sii.no{color:var(--muted);}
 .av-iconbtn{position:relative;width:40px;height:40px;border-radius:13px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none;}
@@ -158,7 +159,7 @@ const CSS = `
 .av-iconbtn .dot{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--hot);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-family:'Space Grotesk';border:2px solid #fff;}
 .av-promo{margin:14px 18px 4px;border-radius:20px;padding:20px;color:#fff;position:relative;overflow:hidden;}
 .av-promo .eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.85;}
-.av-promo .big{font-family:'Space Grotesk';font-weight:700;font-size:23px;line-height:1.1;margin-top:6px;}
+.av-promo .big{font-family:'Space Grotesk';font-weight:700;font-size:23px;line-height:1.1;letter-spacing:-.02em;margin-top:6px;}
 .av-promo .sub{font-size:13px;opacity:.9;margin-top:8px;}
 .av-promo .blob{position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.14);}
 .av-promo .blob2{position:absolute;right:30px;bottom:-50px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.1);}
@@ -166,7 +167,7 @@ const CSS = `
 .av-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer;transition:.2s;}
 .av-dot.on{background:#fff;width:18px;border-radius:4px;}
 .av-shead{display:flex;align-items:baseline;justify-content:space-between;padding:22px 18px 12px;}
-.av-shead h3{font-family:'Space Grotesk';font-weight:700;font-size:18px;}
+.av-shead h3{font-family:'Space Grotesk';font-weight:700;font-size:18px;letter-spacing:-.02em;}
 .av-shead .all{font-size:12.5px;font-weight:600;color:var(--accent);background:none;border:0;cursor:pointer;display:flex;align-items:center;gap:2px;}
 .av-frow{display:flex;gap:14px;overflow-x:auto;padding:0 18px 6px;scroll-snap-type:x mandatory;}
 .av-frow::-webkit-scrollbar{display:none;}
@@ -177,14 +178,21 @@ const CSS = `
 .av-chips::-webkit-scrollbar{display:none;}
 .av-chip{flex:none;font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink2);cursor:pointer;white-space:nowrap;transition:.14s;font-family:'Space Grotesk';}
 .av-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.av-chip:not(.on):hover{border-color:var(--muted);}
 .av-search{padding:14px 18px 2px;position:relative;}
 .av-search svg{position:absolute;left:30px;top:50%;transform:translateY(-50%);color:var(--muted);}
-.av-input{width:100%;border:1px solid var(--line);background:var(--soft);border-radius:14px;padding:13px 14px;font-size:14px;color:var(--ink);outline:none;font-family:inherit;}
+.av-input{width:100%;border:1px solid var(--line);background:var(--soft);border-radius:14px;padding:13px 14px;font-size:14px;color:var(--ink);outline:none;font-family:inherit;transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;}
 .av-input.search{padding-left:42px;}
-.av-input:focus{border-color:var(--accent);background:#fff;}
+.av-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft);}
 .av-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 18px 14px;}
-.av-card{border:var(--card-bw, 1px) solid var(--card-bc, var(--line));border-radius:var(--card-rad, 18px);overflow:hidden;background:#fff;cursor:pointer;transition:.16s;display:flex;flex-direction:column;box-shadow:var(--card-sh, 0 4px 14px -12px rgba(20,20,50,.3));}
+.av-card{border:var(--card-bw, 1px) solid var(--card-bc, var(--line));border-radius:var(--card-rad, 18px);overflow:hidden;background:#fff;cursor:pointer;transition:transform .18s ease, box-shadow .22s ease;display:flex;flex-direction:column;box-shadow:var(--card-sh, 0 6px 18px -14px rgba(20,20,50,.25));}
 .av-card:active{transform:scale(.985);}
+.av-grid .av-card{animation:avpop .3s ease backwards;}
+.av-grid .av-card:nth-child(2){animation-delay:.04s;}
+.av-grid .av-card:nth-child(3){animation-delay:.08s;}
+.av-grid .av-card:nth-child(4){animation-delay:.12s;}
+.av-grid .av-card:nth-child(5){animation-delay:.16s;}
+.av-grid .av-card:nth-child(6){animation-delay:.2s;}
 .av-thumb{aspect-ratio:1;display:grid;place-items:center;font-size:48px;position:relative;background-size:cover;background-position:center;}
 .av-badges{position:absolute;top:9px;left:9px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;}
 .av-badge{font-size:10px;font-weight:700;padding:4px 8px;border-radius:8px;font-family:'Space Grotesk';line-height:1;}
@@ -192,7 +200,8 @@ const CSS = `
 .av-badge.sale{background:var(--hot);color:#fff;}
 .av-badge.stock{background:#fff;color:var(--hot);box-shadow:0 0 0 1px var(--hot) inset;}
 .av-badge.top{background:var(--gold);color:#3a2a00;}
-.av-heart{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.9);border:0;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(4px);color:var(--muted);}
+.av-heart{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.9);border:0;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(4px);color:var(--muted);transition:color .15s ease, transform .18s cubic-bezier(.34,1.56,.64,1);}
+.av-heart:active{transform:scale(1.18);}
 .av-heart.on{color:var(--hot);}
 .av-cardbody{padding:11px 12px 13px;display:flex;flex-direction:column;gap:3px;}
 .av-minidots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:2;}
@@ -220,8 +229,8 @@ const CSS = `
 .av-rate{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink2);font-weight:600;font-family:'Space Grotesk';}
 .av-rate .c{color:var(--muted);font-weight:500;}
 .av-priceline{display:flex;align-items:baseline;gap:7px;margin-top:3px;flex-wrap:wrap;}
-.av-price{font-family:'Space Grotesk';font-weight:700;font-size:15px;}
-.av-was{font-size:12px;color:var(--muted);text-decoration:line-through;}
+.av-price{font-family:'Space Grotesk';font-weight:700;font-size:15px;letter-spacing:-.01em;font-variant-numeric:tabular-nums lining-nums;}
+.av-was{font-size:12px;color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums;}
 .av-off{font-size:10px;font-weight:700;color:var(--hot);background:var(--hot-soft);padding:2px 6px;border-radius:6px;font-family:'Space Grotesk';}
 .av-nav{position:absolute;bottom:0;left:0;right:0;z-index:40;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:9px 8px 16px;}
 .av-navb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;cursor:pointer;color:var(--muted);position:relative;}
@@ -240,9 +249,9 @@ const CSS = `
 .av-dots i{width:6px;height:6px;border-radius:50%;background:rgba(20,20,30,.35);transition:.2s;cursor:pointer;}
 .av-dots i.on{width:20px;border-radius:999px;background:#fff;}
 .av-sec{padding:18px;}
-.av-h1{font-family:'Space Grotesk';font-weight:700;font-size:22px;line-height:1.18;}
+.av-h1{font-family:'Space Grotesk';font-weight:700;font-size:23px;line-height:1.16;letter-spacing:-.02em;}
 .av-detprice{display:flex;align-items:baseline;gap:10px;margin:12px 0 4px;flex-wrap:wrap;}
-.av-detprice .av-price{font-size:26px;}
+.av-detprice .av-price{font-size:27px;letter-spacing:-.02em;}
 .av-vlabel{font-size:12px;font-weight:600;color:var(--ink2);margin:18px 0 9px;text-transform:uppercase;letter-spacing:.03em;}
 .av-swatches{display:flex;gap:10px;flex-wrap:wrap;}
 .av-swatch{width:36px;height:36px;border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
@@ -262,7 +271,7 @@ const CSS = `
 .av-trustcol svg{color:var(--accent);margin-bottom:6px;}
 .av-divider{height:8px;background:var(--bg);margin:22px 0;}
 .av-revhead{display:flex;align-items:center;gap:16px;padding:0 18px;}
-.av-bigrate{font-family:'Space Grotesk';font-weight:700;font-size:40px;line-height:1;}
+.av-bigrate{font-family:'Space Grotesk';font-weight:700;font-size:40px;line-height:1;letter-spacing:-.02em;}
 .av-review{margin:0 18px 12px;border:1px solid var(--line);border-radius:14px;padding:13px 15px;}
 .av-revname{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;}
 .av-revtext{font-size:13px;color:var(--ink2);line-height:1.5;margin-top:6px;}
@@ -271,9 +280,10 @@ const CSS = `
 .av-relcard{flex:none;width:132px;cursor:pointer;}
 .av-relthumb{aspect-ratio:1;border-radius:16px;display:grid;place-items:center;font-size:40px;background-size:cover;background-position:center;}
 .av-bottombar{position:sticky;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:13px 18px;display:flex;gap:11px;z-index:20;}
-.av-btn{flex:1;border:0;border-radius:14px;padding:15px;font-family:'Space Grotesk';font-weight:700;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.12s;}
+.av-btn{flex:1;border:0;border-radius:14px;padding:15px;min-height:48px;font-family:'Space Grotesk';font-weight:700;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease, box-shadow .18s ease, filter .18s ease, background .18s ease;}
 .av-btn:active{transform:scale(.98);}
 .av-btn.primary{background:var(--accent);color:#fff;box-shadow:0 8px 20px -10px rgba(59,43,255,.7);}
+.av-btn.primary:hover{filter:brightness(1.06);box-shadow:0 12px 26px -10px rgba(59,43,255,.75);}
 .av-btn.primary:disabled{background:#CBCBD8;box-shadow:none;cursor:not-allowed;}
 .av-btn.dark{background:var(--ink);color:#fff;}
 .av-btn.wa{background:var(--wa);color:#fff;flex:none;width:56px;padding:15px 0;}
@@ -286,22 +296,24 @@ const CSS = `
 .av-wafabtx b{font-weight:800;font-size:12.5px;}
 .av-wamenu{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px -12px rgba(20,20,50,.4);padding:8px;display:flex;flex-direction:column;gap:4px;width:248px;animation:wapop .22s ease;}
 .av-wamenuhead{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:7px 10px 5px;}
-.av-waopt{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font-size:13px;font-weight:600;padding:11px 12px;border-radius:12px;background:var(--soft);}
+.av-waopt{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font-size:13px;font-weight:600;padding:11px 12px;border-radius:12px;background:var(--soft);transition:.14s;}
 .av-waopt:hover{background:var(--accent-soft);color:var(--accent);}
 .av-waopt svg{color:var(--wa, #25D366);flex:0 0 auto;}
 @keyframes wapop{from{opacity:0;transform:translateY(8px) scale(.9);}to{opacity:1;transform:none;}}
 .av-btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
+.av-btn.ghost:hover{border-color:var(--muted);background:var(--soft);}
 .av-btn.block{width:100%;}
 .av-pagehead{padding:40px 18px 14px;display:flex;align-items:center;gap:10px;}
-.av-pagetitle{font-family:'Space Grotesk';font-weight:700;font-size:21px;}
+.av-pagetitle{font-family:'Space Grotesk';font-weight:700;font-size:21px;letter-spacing:-.02em;}
 .av-line{display:flex;gap:13px;padding:15px 18px;border-bottom:1px solid var(--line);align-items:center;}
 .av-linethumb{width:62px;height:62px;border-radius:14px;display:grid;place-items:center;font-size:28px;flex:none;background-size:cover;background-position:center;}
 .av-qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
-.av-qty button{width:30px;height:30px;border:0;background:#fff;cursor:pointer;font-size:16px;color:var(--ink2);}
+.av-qty button{width:32px;height:32px;border:0;background:#fff;cursor:pointer;font-size:16px;color:var(--ink2);transition:background .12s ease;}
+.av-qty button:active{background:var(--soft);}
 .av-qty span{min-width:28px;text-align:center;font-family:'Space Grotesk';font-weight:600;font-size:13px;}
 .av-summary{padding:18px;}
 .av-srow{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;color:var(--ink2);}
-.av-srow.total{font-family:'Space Grotesk';font-weight:700;font-size:19px;color:var(--ink);border-top:1px solid var(--line);margin-top:6px;padding-top:13px;}
+.av-srow.total{font-family:'Space Grotesk';font-weight:700;font-size:19px;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--ink);border-top:1px solid var(--line);margin-top:6px;padding-top:13px;}
 .av-bank{margin:12px 18px;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
 .av-bankhead{background:var(--ink);color:#fff;padding:13px 15px;font-family:'Space Grotesk';font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;}
 .av-bankrow{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;border-bottom:1px solid var(--line);font-size:13px;gap:10px;}
@@ -382,7 +394,7 @@ const CSS = `
 .av-welcomehero{padding:26px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;color:#fff;text-align:center;}
 .av-welcometag{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
 .av-welcomebody{padding:18px 20px 20px;}
-.av-welcomebody .t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;}
+.av-welcomebody .t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.02em;}
 .av-welcomebody .d{font-size:13px;color:var(--muted);margin:4px 0 12px;}
 .av-welcomelist{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
 .av-welcomelist .row{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;font-weight:600;}
@@ -398,7 +410,7 @@ const CSS = `
 .av-drawersub{display:block;text-align:left;width:100%;border:0;background:none;cursor:pointer;font-family:inherit;font-size:13px;color:var(--muted);padding:8px 12px 8px 48px;border-radius:10px;}
 .av-drawersub:hover{background:var(--soft);color:var(--ink2);}
 .av-drawerhead{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:12px 8px 4px;font-weight:700;}
-.av-pagetitle2{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;color:var(--ink);margin-bottom:14px;}
+.av-pagetitle2{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;letter-spacing:-.02em;color:var(--ink);margin-bottom:14px;}
 .av-tabbar::-webkit-scrollbar{display:none;}
 .av-tab{flex:1;min-width:64px;text-align:center;padding:14px 4px;font-family:'Space Grotesk';font-weight:600;font-size:12px;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;}
 .av-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
@@ -508,7 +520,7 @@ const CSS = `
 .av-anim{animation:avpop .24s ease;}
 .av-toast{position:absolute;bottom:108px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:999px;z-index:55;animation:avpop .2s ease;font-family:'Space Grotesk';white-space:nowrap;box-shadow:0 8px 20px -8px rgba(0,0,0,.4);}
 .av-modal{position:absolute;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,15,25,.45);backdrop-filter:blur(2px);animation:avfade .2s ease;}
-.av-sheet{width:100%;background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -10px 40px -10px rgba(0,0,0,.3);animation:avslide .26s cubic-bezier(.2,.8,.2,1);}
+.av-sheet{width:100%;background:#fff;border-radius:24px 24px 0 0;padding:20px;box-shadow:0 -10px 40px -10px rgba(0,0,0,.3);animation:avslide .32s cubic-bezier(.32,1.22,.45,1);}
 .av-sheet .ok{display:flex;align-items:center;gap:8px;color:var(--ok);font-weight:600;font-size:14px;font-family:'Space Grotesk';}
 .av-paypick{display:flex;gap:10px;margin:0 18px 6px;}
 .av-paybtn{flex:1;border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px 10px;cursor:pointer;text-align:center;font-family:'Space Grotesk';font-weight:600;font-size:13px;color:var(--ink2);transition:.14s;display:flex;flex-direction:column;align-items:center;gap:5px;}
@@ -517,6 +529,81 @@ const CSS = `
 .av-cashbox{margin:12px 18px;border:1px solid var(--line);border-radius:16px;background:var(--soft);padding:15px;font-size:13px;color:var(--ink2);line-height:1.5;display:flex;gap:10px;}
 @keyframes avfade{from{opacity:0;}to{opacity:1;}}
 @keyframes avslide{from{transform:translateY(100%);}to{transform:none;}}
+/* ---- Refinamiento v3: foco accesible, skeletons y movimiento ---- */
+.av-root :is(button,a,input,select,textarea,[role=button]):focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.av-skel{position:relative;overflow:hidden;border-radius:12px;background:linear-gradient(90deg,var(--soft) 25%,var(--line) 50%,var(--soft) 75%);background-size:200% 100%;animation:avskel 1.4s ease-in-out infinite;}
+.av-skel.bar{height:14px;width:170px;max-width:60vw;}
+.av-skel.bar.w2{width:110px;}
+@keyframes avskel{to{background-position:-200% 0;}}
+.av-empty{animation:avfade .3s ease;}
+.av-dheart{transition:color .15s ease, transform .18s cubic-bezier(.34,1.56,.64,1);}
+.av-dheart:active{transform:scale(1.14);}
+@media (prefers-reduced-motion:reduce){.av-root *,.av-root *::before,.av-root *::after{animation-duration:.001s!important;transition-duration:.001s!important;}}
+/* ================= v3.1 — Escritorio como sitio de tienda real ================= */
+@media (min-width:1024px){
+  /* Header: barra de sitio web con contenido centrado a 1320px */
+  .av-top{height:72px;padding:0 max(32px, calc((100% - 1320px)/2));gap:18px;}
+  .av-storename{font-size:18px;}
+  .av-burger{width:44px;height:44px;border-radius:13px;}
+  .av-topnav{gap:4px;}
+  .av-topnavb{font-size:14.5px;padding:9px 16px;border-radius:999px;}
+  .av-topnavb.on{background:var(--accent);color:#fff;}
+  /* Hero editorial */
+  .av-dhero{border-radius:28px;padding:88px 72px;margin:32px 0 22px;min-height:400px;display:flex;align-items:center;}
+  .av-dhero-in{max-width:680px;animation:avpop .5s ease backwards;}
+  .av-dhero-title{font-size:62px;letter-spacing:-2px;}
+  .av-dhero-sub{font-size:19px;}
+  .av-dhero-cta .av-btn{border-radius:999px;}
+  /* Franja de confianza con hover */
+  .av-dprops{gap:18px;margin:10px 0 34px;}
+  .av-dprop{border-radius:18px;padding:22px;transition:transform .18s ease, box-shadow .22s ease;}
+  .av-dprop:hover{transform:translateY(-3px);box-shadow:0 18px 40px -24px rgba(20,20,50,.35);}
+  /* Secciones y catálogo */
+  .av-shead{padding-top:34px;padding-bottom:16px;}
+  .av-shead h3{font-size:24px;}
+  .av-frow{gap:20px;padding-bottom:10px;}
+  .av-feat{width:268px;border-radius:22px;transition:transform .18s ease, box-shadow .22s ease;}
+  .av-feat:hover{transform:translateY(-4px);box-shadow:0 20px 44px -24px rgba(20,20,50,.4);}
+  .av-cardbody{padding:14px 16px 16px;gap:4px;}
+  .av-card .av-name{font-size:14px;}
+  .av-card .av-price{font-size:16px;}
+  .av-dcta{border-radius:26px;padding:44px 52px;}
+  .av-dfooter-in{padding:56px 32px 32px;gap:40px;}
+  /* Buscador y chips alineados al contenedor */
+  .av-buyerpad .av-search{padding:20px 0 6px;max-width:560px;}
+  .av-buyerpad .av-search svg{left:14px;}
+  .av-buyerpad .av-chips{padding:8px 0 4px;}
+  /* Modales centrados como sitio de escritorio (no bottom-sheet) */
+  .av-modal{align-items:center;padding:28px;}
+  .av-sheet{max-width:500px;border-radius:26px;animation:avpop .28s ease;}
+  /* Carrito / cuenta: columna de lectura centrada */
+  .av-narrow{max-width:760px;margin:0 auto;width:100%;padding-top:10px;}
+  .av-narrow .av-line{padding:18px 0;}
+  .av-narrow .av-linethumb{width:84px;height:84px;border-radius:16px;}
+  .av-narrow .av-summary{padding:18px 0;}
+  .av-narrow .av-bottombar{position:static;background:transparent;border:0;padding:16px 0 44px;backdrop-filter:none;}
+  .av-acctwrap{max-width:760px;margin:0 auto;width:100%;}
+  .av-checkout{max-width:720px;padding-top:16px;}
+  /* Pedido confirmado: tarjeta centrada */
+  .av-conf{max-width:560px;margin:48px auto;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:0 30px 70px -40px rgba(20,20,50,.35);padding:56px 48px;}
+  /* Detalle de producto: 2 columnas (galería / compra) */
+  .av-detail{max-width:1200px;margin:0 auto;width:100%;padding:36px 32px 40px;}
+  .av-detail::after{content:"";display:block;clear:both;}
+  .av-detail > .av-gallery{float:left;width:53%;aspect-ratio:1;border-radius:26px;overflow:hidden;box-shadow:0 30px 70px -44px rgba(20,20,50,.5);}
+  .av-detail > .av-thumbs{float:left;width:53%;clear:left;padding:16px 0 8px;}
+  .av-detail > .av-sec{float:right;width:43%;padding:4px 0 8px;}
+  .av-detail .av-h1{font-size:34px;line-height:1.1;}
+  .av-detail .av-detprice .av-price{font-size:32px;}
+  .av-detail .av-back,.av-detail .av-dheart{top:16px;}
+  .av-detail .av-gallery .av-badges{top:66px!important;}
+  .av-detail > .av-divider{clear:both;background:transparent;height:34px;margin:0;}
+  .av-detail > .av-shead,.av-detail > .av-revhead,.av-detail > .av-relrow{clear:both;}
+  .av-detail > .av-revhead{padding:0;}
+  .av-detail > .av-review{margin:0 0 12px;}
+  .av-detail > .av-relrow{padding:4px 0 16px;}
+  .av-detail > .av-bottombar{clear:both;position:sticky;bottom:22px;max-width:660px;margin:22px auto 0;border:1px solid var(--line);border-radius:20px;box-shadow:0 26px 60px -26px rgba(20,20,50,.45);padding:14px 16px;}
+  .av-toast{bottom:40px;}
+}
 `;
 
 /* ----------------------------- Utilidades --------------------------- */
@@ -709,6 +796,8 @@ export default function App() {
   const sp = new URLSearchParams(window.location.search);
   const isAdmin = path === "/panel" || path.startsWith("/panel/") || path === "/admin" || path.startsWith("/admin/") || sp.has("admin") || sp.has("panel");
   const publicStoreId = sp.get("tienda");
+  const isLicencias = sp.has("licencias") || path === "/licencias" || path.startsWith("/licencias/");
+  if (isLicencias) return <OwnerAdminApp />;
   if (isAdmin) return <SellerApp />;
   return <StoreFront storeId={publicStoreId} host={window.location.hostname} />;
 }
@@ -785,6 +874,116 @@ function SellerApp({ onExit }) {
   return <Main onLogout={() => { setSession(null); setUnlocked(false); if (onExit) onExit(); }} />;
 }
 
+/* ---- Licencias: canje de código para vendedores nuevos ---- */
+function AccessCodeGate({ onReady, onLogout }) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const submit = async () => {
+    if (!code.trim() || busy) return;
+    setBusy(true); setErr("");
+    try { await redeemAccessCode(code.trim()); onReady(); }
+    catch (e) { setErr(e.message || "No se pudo validar el código."); setBusy(false); }
+  };
+  return (
+    <div className="av-root"><style>{CSS}</style>
+      <div className="av-login">
+        <div className="av-loginlogo" style={grad("#3B2BFF", "#7A4DFF")}>🔑</div>
+        <div style={{ textAlign: "center" }}>
+          <div className="av-h1">Ingresa tu código de acceso</div>
+          <p className="av-desc" style={{ marginTop: 4 }}>Para crear tu tienda necesitas un código de un solo uso. Si aún no lo tienes, contáctanos para obtenerlo.</p>
+        </div>
+        <div><label className="av-cat">Código</label><input className="av-input" style={{ marginTop: 6, fontFamily: "'Space Grotesk',monospace", letterSpacing: "0.05em" }} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="NV-XXXXXXXXXXXXXXXXXXXXXXXX" autoFocus /></div>
+        {err && <div style={{ background: "var(--hot-soft)", color: "#C0291C", padding: "10px 12px", borderRadius: 10, fontSize: 13 }}>{err}</div>}
+        <button className="av-btn primary block" disabled={busy || !code.trim()} onClick={submit}>{busy ? "Validando…" : "Canjear código y crear mi tienda"}</button>
+        <button className="av-btn ghost block" onClick={async () => { await signOut(); if (onLogout) onLogout(); }}>Salir</button>
+        <p className="av-hint" style={{ textAlign: "center" }}>El código se usa una sola vez y queda asociado a tu cuenta.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Licencias: panel del dueño de la plataforma (oculto: /?licencias) ---- */
+function OwnerAdminApp() {
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [owner, setOwner] = useState(null);
+  useEffect(() => {
+    getSession().then((s) => { setSession(s); setChecking(false); });
+    const unsub = onAuthChange((s) => setSession(s));
+    return unsub;
+  }, []);
+  useEffect(() => { if (session) { setOwner(null); isAppOwner().then(setOwner).catch(() => setOwner(false)); } }, [session]);
+  if (checking) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando…</div></div>;
+  if (!session) return <LoginScreen onDone={(s) => setSession(s)} />;
+  if (owner === null) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Verificando…</div></div>;
+  if (!owner) return (
+    <div className="av-root"><style>{CSS}</style>
+      <div className="av-empty" style={{ gap: 12 }}>{I.lock({ width: 36, height: 36 })}<div>No autorizado.</div>
+        <button className="av-btn ghost" style={{ flex: "none", padding: "10px 18px" }} onClick={async () => { await signOut(); setSession(null); }}>Cambiar de cuenta</button>
+      </div>
+    </div>
+  );
+  return <OwnerPanel onLogout={async () => { await signOut(); setSession(null); }} />;
+}
+
+function OwnerPanel({ onLogout }) {
+  const [codes, setCodes] = useState([]);
+  const [count, setCount] = useState(1);
+  const [note, setNote] = useState("");
+  const [days, setDays] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState(null);
+  const load = async () => { try { setCodes(await adminListCodes()); } catch (e) { setErr(e.message || "No se pudo cargar la lista."); } };
+  useEffect(() => { load(); }, []);
+  const gen = async () => {
+    setBusy(true); setErr("");
+    try { await adminGenerateCodes(Math.min(100, Math.max(1, Number(count) || 1)), note.trim() || null, days ? Number(days) : null); setNote(""); await load(); }
+    catch (e) { setErr(e.message || "No se pudo generar."); }
+    finally { setBusy(false); }
+  };
+  const revoke = async (id) => { if (!window.confirm("¿Revocar este código? Ya no podrá canjearse.")) return; try { await adminRevokeCode(id); await load(); } catch (e) { alert(e.message); } };
+  const copy = async (c) => { try { await navigator.clipboard.writeText(c); setCopied(c); setTimeout(() => setCopied(null), 1400); } catch { /* noop */ } };
+  const stChip = (c) => {
+    const vencido = c.status === "unused" && c.expires_at && new Date(c.expires_at) < new Date();
+    if (c.status === "used") return <span className="av-mchip ok">Usado</span>;
+    if (c.status === "revoked") return <span className="av-mchip">Revocado</span>;
+    if (vencido) return <span className="av-mchip">Vencido</span>;
+    return <span className="av-mchip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Sin usar</span>;
+  };
+  return (
+    <div className="av-root"><style>{CSS}</style>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "34px 20px 80px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+          <div className="av-loginlogo" style={{ ...grad("#3B2BFF", "#7A4DFF"), margin: 0, width: 46, height: 46, fontSize: 22, borderRadius: 14 }}>🔑</div>
+          <div style={{ flex: 1 }}><div className="av-pagetitle">Licencias de vendedor</div><div style={{ fontSize: 12.5, color: "var(--muted)" }}>Genera códigos de un solo uso para autorizar tiendas nuevas.</div></div>
+          <button className="av-modeswitch" onClick={onLogout}>Salir</button>
+        </div>
+        <div className="av-orderc" style={{ margin: "0 0 16px" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div style={{ width: 92 }}><label className="av-cat">Cantidad</label><input className="av-input" style={{ marginTop: 6 }} type="number" min="1" max="100" value={count} onChange={(e) => setCount(e.target.value)} /></div>
+            <div style={{ flex: 1, minWidth: 170 }}><label className="av-cat">Nota (comprador / plan)</label><input className="av-input" style={{ marginTop: 6 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: María P. — plan anual" /></div>
+            <div style={{ width: 122 }}><label className="av-cat">Vence (días)</label><input className="av-input" style={{ marginTop: 6 }} type="number" min="1" value={days} onChange={(e) => setDays(e.target.value)} placeholder="Sin límite" /></div>
+            <button className="av-btn primary" style={{ flex: "none", padding: "0 22px", minHeight: 48 }} disabled={busy} onClick={gen}>{busy ? "Generando…" : "Generar"}</button>
+          </div>
+          {err && <div style={{ background: "var(--hot-soft)", color: "#C0291C", padding: "10px 12px", borderRadius: 10, fontSize: 13, marginTop: 10 }}>{err}</div>}
+        </div>
+        {codes.length === 0 ? <div className="av-empty">Aún no hay códigos generados.</div> : codes.map((c) => (
+          <div key={c.id} className="av-orderc" style={{ margin: "0 0 10px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <code style={{ fontFamily: "'Space Grotesk',monospace", fontWeight: 700, fontSize: 13.5, letterSpacing: ".04em" }}>{c.code}</code>
+            {stChip(c)}
+            <span style={{ fontSize: 12, color: "var(--muted)", flex: 1, minWidth: 130 }}>{c.note || ""}{c.used_at ? " · canjeado " + new Date(c.used_at).toLocaleDateString("es-CL") : ""}{c.expires_at ? " · vence " + new Date(c.expires_at).toLocaleDateString("es-CL") : ""}</span>
+            <button className={"av-copy" + (copied === c.code ? " done" : "")} onClick={() => copy(c.code)}>{copied === c.code ? "Copiado ✓" : "Copiar"}</button>
+            {c.status === "unused" && <button className="av-copy" style={{ color: "var(--hot)" }} onClick={() => revoke(c.id)}>Revocar</button>}
+          </div>
+        ))}
+        <p className="av-hint" style={{ marginTop: 18 }}>Esta página solo funciona para el dueño de la plataforma (verificado en el servidor). No compartas este enlace.</p>
+      </div>
+    </div>
+  );
+}
+
 /* ---- Vitrina pública: la tienda, con acceso secreto al panel ---- */
 function StoreFront({ storeId, host }) {
   const [store, setStore] = useState(null);
@@ -807,7 +1006,7 @@ function StoreFront({ storeId, host }) {
   const createOrderH = async ({ buyer, cart, total, comprobanteFile, paymentMethod }) =>
     await createOrder(store.id, { buyer, cart, total, comprobanteFile, paymentMethod });
   if (showSeller) return <SellerApp onExit={() => setShowSeller(false)} />;
-  if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando tienda…</div></div>;
+  if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty"><div className="av-skel bar" /><div className="av-skel bar w2" />Cargando tienda…</div></div>;
   if (error) return <div className="av-root"><style>{CSS}</style><div className="av-empty">{error}</div></div>;
   return (
     <div className="av-root"><style>{CSS}</style>
@@ -838,7 +1037,8 @@ function LoginScreen({ onDone, onBack }) {
           setMsg("Tu cuenta se creó. Revisa tu correo para confirmarla y luego inicia sesión.");
           setSignup(false);
         } else {
-          await createMyStore(shop);
+          try { await createMyStore(shop); }
+          catch { try { localStorage.setItem("nv_pending_shop", shop || ""); } catch { /* noop */ } }
           onDone(await getSession());
         }
       } else {
@@ -875,6 +1075,7 @@ function Main({ onLogout }) {
   const [stockLog, setStockLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [needCode, setNeedCode] = useState(false);
   const logTimers = useRef({});
 
   const reloadStockLog = async (storeId) => { try { setStockLog(await listStockLog(storeId)); } catch { /* noop */ } };
@@ -898,13 +1099,17 @@ function Main({ onLogout }) {
     setOrders(withUrls);
   };
 
-  useEffect(() => {
-    (async () => {
+  const boot = async () => {
       try {
         let s = await getMyStore();
         if (!s) {
-          // Usuario logueado sin tienda (recién registrado): se la creamos.
-          try { s = await createMyStore(); } catch (e) { setError("No se pudo crear tu tienda: " + (e.message || e)); setLoading(false); return; }
+          // Usuario logueado sin tienda: primero verificamos su licencia (código de acceso).
+          let habilitado = false;
+          try { habilitado = await canCreateStore(); } catch { habilitado = false; }
+          if (!habilitado) { setNeedCode(true); setLoading(false); return; }
+          // Habilitado (recién registrado): se la creamos, con el nombre elegido si quedó pendiente.
+          let pendingName; try { pendingName = localStorage.getItem("nv_pending_shop") || undefined; } catch { pendingName = undefined; }
+          try { s = await createMyStore(pendingName); try { localStorage.removeItem("nv_pending_shop"); } catch { /* noop */ } } catch (e) { setError("No se pudo crear tu tienda: " + (e.message || e)); setLoading(false); return; }
         }
         if (!s) { setError("No se encontró tu tienda."); setLoading(false); return; }
         setStore(mapStore(s));
@@ -913,8 +1118,8 @@ function Main({ onLogout }) {
         await reloadStockLog(s.id);
       } catch (e) { setError(e.message || "Error cargando datos"); }
       finally { setLoading(false); }
-    })();
-  }, []);
+  };
+  useEffect(() => { boot(); }, []);
 
   /* ---- handlers que escriben en Supabase ---- */
   const toggleProduct = async (id, key) => {
@@ -990,7 +1195,8 @@ function Main({ onLogout }) {
     try { await deleteOrder(dbId); } catch (e) { alert(e.message); reloadOrders(store.id); }
   };
 
-  if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty">Cargando tu tienda…</div></div>;
+  if (loading) return <div className="av-root"><style>{CSS}</style><div className="av-empty"><div className="av-skel bar" /><div className="av-skel bar w2" />Cargando tu tienda…</div></div>;
+  if (needCode) return <AccessCodeGate onReady={() => { setNeedCode(false); setLoading(true); boot(); }} onLogout={onLogout} />;
   if (error) return <div className="av-root"><style>{CSS}</style><div className="av-empty">{error}<button className="av-btn dark" style={{ flex: "none", padding: "11px 22px", marginTop: 10 }} onClick={onLogout}>Volver al login</button></div></div>;
 
   return (
@@ -1163,7 +1369,6 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
         <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"], ["account", acct ? acct.name.split(" ")[0] : "Mi cuenta"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
         <button className="av-iconbtn av-acctbtn" style={{ marginLeft: "auto" }} onClick={() => setTab("account")} title="Mi cuenta">{I.user({ width: 19, height: 19 })}{acct && <span className="dot" style={{ background: "var(--ok)", minWidth: 8, height: 8, padding: 0, top: -2, right: -2 }} />}</button>
         {onSwitchMode && <button className="av-modeswitch" onClick={onSwitchMode} title="Volver al panel de vendedor">{I.user({ width: 15, height: 15 })} Vendedor</button>}
-        {onSecretAdmin && <button onClick={onSecretAdmin} aria-hidden="true" tabIndex={-1} title="" style={{ position: "absolute", top: 0, right: 0, width: 52, height: 52, opacity: 0, background: "transparent", border: 0, padding: 0, margin: 0, zIndex: 50 }} />}
       </div>
       {drawer && <>
         <div className="av-drawer-ov" onClick={() => setDrawer(false)} />
@@ -1185,6 +1390,12 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
               </div>
             );
           })}
+          {onSecretAdmin && <div style={{ marginTop: "auto", borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+            <button className="av-draweritem" onClick={() => { setDrawer(false); onSecretAdmin(); }}>
+              <span style={{ width: 24, display: "inline-flex", justifyContent: "center" }}>{I.lock({ width: 18, height: 18 })}</span>
+              <span style={{ flex: 1 }}>Login Vendedor</span>
+            </button>
+          </div>}
         </div>
       </>}
       <div className="av-screen">
@@ -1493,7 +1704,7 @@ function Detail({ store, product, all, fav, onFav, onBack, onAdd, openRelated })
     return () => clearInterval(t);
   }, [paused, slides.length]);
   return (
-    <div className="av-anim av-pad">
+    <div className="av-anim av-pad av-detail">
       <div className="av-gallery" style={hasImg ? imgBg(slides[slide]) : grad(slides[slide][0], slides[slide][1])} onTouchStart={galStart} onTouchEnd={galEnd} aria-label={out ? "Producto agotado" : undefined}>
         {out && <SoldLayer />}
         <button className="av-back" onClick={onBack}>{I.back()}</button>
@@ -1565,7 +1776,7 @@ function Cart({ cart, setCart, total, onShop, onCheckout }) {
   const setQty = (key, d) => setCart((c) => c.map((i) => (i.key === key ? { ...i, qty: Math.max(1, i.qty + d) } : i)));
   const remove = (key) => setCart((c) => c.filter((i) => i.key !== key));
   return (
-    <div className="av-anim">
+    <div className="av-anim av-narrow">
       <div className="av-pagehead" style={{ paddingTop: 18 }}><span className="av-pagetitle">Tu carrito</span></div>
       {cart.length === 0 ? (<div className="av-empty">{I.bag({ width: 36, height: 36 })}<div>Tu carrito está vacío.</div><button className="av-btn dark" style={{ flex: "none", padding: "11px 22px", marginTop: 6 }} onClick={onShop}>Ver productos</button></div>) : (<>
         {cart.map((i) => (<div key={i.key} className="av-line"><div className="av-linethumb" style={i.images && i.images.length ? imgBg(i.images[0]) : grad(i.g[0], i.g[1])}>{!(i.images && i.images.length) && i.emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div className="av-name">{i.name}</div><div className="av-cat" style={{ marginTop: 2 }}>{i.color}{i.size !== "Única" ? " · " + i.size : ""}</div><div className="av-price" style={{ fontSize: 14, marginTop: 5 }}>{CLP(i.price * i.qty)}</div></div><div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}><div className="av-qty"><button onClick={() => setQty(i.key, -1)}>–</button><span>{i.qty}</span><button onClick={() => setQty(i.key, 1)}>+</button></div><button onClick={() => remove(i.key)} style={{ border: 0, background: "none", color: "var(--muted)", fontSize: 11, cursor: "pointer" }}>Quitar</button></div></div>))}
@@ -1668,7 +1879,7 @@ function Checkout({ store, total, onBack, onPlace, showToast, defaultBuyer }) {
   const title = method === "efectivo" ? "Pagar en efectivo" : method === "mercadopago" ? "Pagar con Mercado Pago" : "Pagar por transferencia";
   const mpOn = !!(store.sii && store.theme && store.theme.mp);
   return (
-    <div className="av-anim av-pad">
+    <div className="av-anim av-pad av-checkout">
       <div className="av-pagehead"><button className="av-back" style={{ position: "static" }} onClick={onBack}>{I.back()}</button><span className="av-pagetitle">{title}</span></div>
       <div className="av-summary" style={{ paddingBottom: 4 }}><div className="av-srow total" style={{ borderTop: 0, marginTop: 0, paddingTop: 0 }}><span>Total a pagar</span><span>{CLP(total)}</span></div></div>
       <div className="av-vlabel" style={{ margin: "6px 18px 0" }}>Método de pago</div>
