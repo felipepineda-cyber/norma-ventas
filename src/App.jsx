@@ -16,7 +16,9 @@ import {
 /* ------------------------------ Estilos ----------------------------- */
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
-.av-root{--ink:#14141B;--ink2:#43434F;--muted:#8E8E9C;--line:#ECECF2;--bg:#EFEFF3;--surface:#FFFFFF;--soft:#F6F6FA;--accent:#3B2BFF;--accent-2:#7A4DFF;--accent-soft:#ECEAFF;--hot:#F0392B;--hot-soft:#FFE9E7;--gold:#FFB400;--wa:#1FB855;--ok:#15A34A;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);min-height:100vh;-webkit-font-smoothing:antialiased;}
+html,body{height:100%;margin:0;overflow:hidden;}
+#root{height:100%;}
+.av-root{--ink:#14141B;--ink2:#43434F;--muted:#8E8E9C;--line:#ECECF2;--bg:#EFEFF3;--surface:#FFFFFF;--soft:#F6F6FA;--accent:#3B2BFF;--accent-2:#7A4DFF;--accent-soft:#ECEAFF;--hot:#F0392B;--hot-soft:#FFE9E7;--gold:#FFB400;--wa:#1FB855;--ok:#15A34A;font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg);height:100%;overflow-y:auto;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
 .av-root *{box-sizing:border-box;}
 .av-stage{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 12px 40px;}
 .av-switch{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px;box-shadow:0 2px 8px rgba(20,20,40,.06);}
