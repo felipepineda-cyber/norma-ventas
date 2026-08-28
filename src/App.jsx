@@ -150,6 +150,9 @@ html,body{height:100%;margin:0;overflow:hidden;}
 .av-iconbtn{position:relative;width:40px;height:40px;border-radius:13px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none;transition:transform .12s ease,border-color .15s ease;}
 .av-iconbtn:hover{border-color:var(--muted);}
 .av-iconbtn:active{transform:scale(.94);}
+.av-topauth{flex:none;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:flex-end;gap:1px;padding:2px;}
+.av-topauth .l1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;color:var(--accent);white-space:nowrap;}
+.av-topauth .l2{font-size:10.5px;color:var(--muted);white-space:nowrap;}
 .av-modeswitch{display:inline-flex;align-items:center;gap:5px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;border:1px solid var(--line);background:#fff;color:var(--ink2);padding:8px 13px;border-radius:999px;cursor:pointer;flex:none;transition:.16s;white-space:nowrap;}
 .av-modeswitch:hover{border-color:var(--accent);color:var(--accent);}
 .av-colorpick{width:42px;height:32px;border:1px solid var(--line);border-radius:9px;padding:2px;background:#fff;cursor:pointer;flex:none;}
@@ -407,6 +410,12 @@ html,body{height:100%;margin:0;overflow:hidden;}
 .av-welcomelist .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none;}
 .av-welcomex{position:absolute;top:10px;right:10px;z-index:2;width:30px;height:30px;border-radius:999px;border:0;background:rgba(0,0,0,.28);color:#fff;font-size:14px;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(4px);}
 .av-welcomex:hover{background:rgba(0,0,0,.45);}
+.av-welcomeflip{perspective:1400px;}
+.av-welcomeflipinner{position:relative;transform-style:preserve-3d;transform:rotateY(-180deg);transition:transform .8s cubic-bezier(.34,1.56,.64,1);}
+.av-welcomeflipinner.on{transform:rotateY(0deg);}
+.av-welcomeface{backface-visibility:hidden;}
+.av-welcomeback{position:absolute;inset:0;transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;}
+.av-welcomefront{position:relative;}
 @keyframes av-flash{0%,100%{background:transparent}18%{background:var(--accent-soft)}}
 .av-drawerchev{font-size:16px;color:var(--muted);padding:2px 6px;border-radius:8px;transition:transform .2s ease;}
 .av-drawerchev.open{transform:rotate(180deg);}
@@ -1350,7 +1359,6 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
     return () => clearTimeout(t);
   }, [favs, cart, history, acct]);
   const [welcome, setWelcome] = useState(false);
-  useEffect(() => { if (acct) return; const t = setTimeout(() => setWelcome(true), 700); return () => clearTimeout(t); }, []);
   const closeWelcome = (goAcct, mode) => { setWelcome(false); if (goAcct) { setAcctMode(mode || "register"); setTab("account"); document.querySelector(".av-screen")?.scrollTo(0, 0); } };
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("pago");
@@ -1396,7 +1404,11 @@ function Buyer({ store, products, onCreateOrder, onSwitchMode, onSecretAdmin }) 
         <button className="av-burger" onClick={() => setDrawer(true)} title="Categorías">{I.menu({ width: 22, height: 22 })}</button>
         <div className="av-store" style={headerCfg(store).align === "center" ? { flex: 1, justifyContent: "center" } : undefined}><StoreLogo store={store} size={headerCfg(store).logoSize} radius={Math.round(headerCfg(store).logoSize * 0.3)} fontSize={Math.round(headerCfg(store).logoSize * 0.52)} /><div className="av-storetext"><div className="av-storename" style={{ fontSize: headerCfg(store).titleSize, color: headerCfg(store).titleColor || undefined }}>{store.name}</div><span className={"av-sii" + (store.sii ? "" : " no")}>{I.shield({ width: 11, height: 11 })}{store.sii ? "Verificado en el SII" : "Vendedor independiente"}</span></div></div>
         <div className="av-topnav">{[["home", "Inicio"], ["search", "Buscar"], ["favs", "Favoritos"], ["cart", cartCount > 0 ? `Carrito (${cartCount})` : "Carrito"], ["account", acct ? acct.name.split(" ")[0] : "Mi cuenta"]].map(([k, l]) => <button key={k} className={"av-topnavb" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{l}</button>)}</div>
-        <button className="av-iconbtn av-acctbtn" style={{ marginLeft: "auto" }} onClick={() => setTab("account")} title="Mi cuenta">{I.user({ width: 19, height: 19 })}{acct && <span className="dot" style={{ background: "var(--ok)", minWidth: 8, height: 8, padding: 0, top: -2, right: -2 }} />}</button>
+        {acct ? (
+          <button className="av-iconbtn av-acctbtn" style={{ marginLeft: "auto" }} onClick={() => setTab("account")} title="Mi cuenta">{I.user({ width: 19, height: 19 })}<span className="dot" style={{ background: "var(--ok)", minWidth: 8, height: 8, padding: 0, top: -2, right: -2 }} /></button>
+        ) : (
+          <button className="av-topauth" style={{ marginLeft: "auto" }} onClick={() => setWelcome(true)}><span className="l1">¡Regístrate aquí!</span><span className="l2">o inicia sesión</span></button>
+        )}
         {onSwitchMode && <button className="av-modeswitch" onClick={onSwitchMode} title="Volver al panel de vendedor">{I.user({ width: 15, height: 15 })} Vendedor</button>}
       </div>
       {drawer && <>
@@ -1458,22 +1470,37 @@ function WelcomeModal({ store, onRegister, onLogin, onClose }) {
     [I.bag, "Recupera tu carrito", "Si cierras la tienda, tu carrito te espera."],
     [I.user, "Historial de compras", "Revisa todos tus pedidos cuando quieras."],
   ];
+  const [flipped, setFlipped] = useState(false);
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(() => setFlipped(true)); });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  }, []);
   return (
     <div className="av-modal" onClick={onClose}>
       <div className="av-sheet av-welcome" onClick={(e) => e.stopPropagation()}>
         <button className="av-welcomex" onClick={onClose} aria-label="Cerrar">✕</button>
-        <div className="av-welcomehero" style={grad(store.logoA, store.logoB)}>
-          <StoreLogo store={store} size={52} radius={16} fontSize={26} />
-          <div className="av-welcometag">¡Bienvenid@ a {store.name}!</div>
-        </div>
-        <div className="av-welcomebody">
-          <div className="t">Crea tu cuenta gratis</div>
-          <div className="d">Con tu nombre y teléfono guardas todo en este dispositivo:</div>
-          <div className="av-welcomelist">{benefits.map(([ic, t, d], i) => <div key={i} className="row"><span className="ic">{ic({ width: 16, height: 16 })}</span><div><div className="bt">{t}</div><div className="bd">{d}</div></div></div>)}</div>
-          <button className="av-btn primary block" onClick={onRegister}>{I.user({ width: 17, height: 17 })} Crear mi cuenta</button>
-          <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onLogin}>Ya tengo cuenta · Iniciar sesión</button>
-          <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onClose}>Ahora no</button>
-          <p className="av-hint" style={{ textAlign: "center", marginTop: 10 }}>Es gratis y se guarda con tu clave para que entres desde cualquier dispositivo.</p>
+        <div className="av-welcomeflip">
+          <div className={"av-welcomeflipinner" + (flipped ? " on" : "")}>
+            <div className="av-welcomeface av-welcomeback" style={grad(store.logoA, store.logoB)}>
+              <StoreLogo store={store} size={84} radius={24} fontSize={38} />
+            </div>
+            <div className="av-welcomeface av-welcomefront">
+              <div className="av-welcomehero" style={grad(store.logoA, store.logoB)}>
+                <StoreLogo store={store} size={52} radius={16} fontSize={26} />
+                <div className="av-welcometag">¡Bienvenid@ a {store.name}!</div>
+              </div>
+              <div className="av-welcomebody">
+                <div className="t">Crea tu cuenta gratis</div>
+                <div className="d">Con tu nombre y teléfono guardas todo en este dispositivo:</div>
+                <div className="av-welcomelist">{benefits.map(([ic, t, d], i) => <div key={i} className="row"><span className="ic">{ic({ width: 16, height: 16 })}</span><div><div className="bt">{t}</div><div className="bd">{d}</div></div></div>)}</div>
+                <button className="av-btn primary block" onClick={onRegister}>{I.user({ width: 17, height: 17 })} Crear mi cuenta</button>
+                <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onLogin}>Ya tengo cuenta · Iniciar sesión</button>
+                <button className="av-btn ghost block" style={{ marginTop: 8 }} onClick={onClose}>Ahora no</button>
+                <p className="av-hint" style={{ textAlign: "center", marginTop: 10 }}>Es gratis y se guarda con tu clave para que entres desde cualquier dispositivo.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
